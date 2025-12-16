@@ -5,15 +5,23 @@ jobs:
     docker:
       - image: cimg/go:1.25.4
     environment:
-      - PIPELINE_DEFINITION_ID: "b5f2f49c-0add-5f14-a93c-9571a76aa4eb"
-      - SIGSTORE_ENV: "staging"
+      - PIPELINE_DEFINITION_ID: "46322274-27e9-570a-832a-d0be5c3987b9"
     parameters:
       cosign-version:
         description: "Version of cosign to use"
         default: "v3.0.3"
         type: string
+      sigstore-env:
+        description: "SIGSTORE_ENV override; if empty, derived from branch"
+        default: ""
+        type: string
     steps:
       - checkout
+      - run:
+          name: set SIGSTORE_ENV
+          command: |
+            echo 'export SIGSTORE_ENV="<<parameters.sigstore-env>>"' >> "$BASH_ENV"
+            source "$BASH_ENV"
       - restore_cache:
           name: Restore cosign cache
           keys:
@@ -68,3 +76,17 @@ workflows:
       - blob_sign_test:
           context:
             - org-global
+          sigstore-env: production
+          filters:
+            branches:
+              only:
+                - main
+
+      - blob_sign_test:
+          context:
+            - org-global
+          sigstore-env: staging
+          filters:
+            branches:
+              ignore:
+                - main

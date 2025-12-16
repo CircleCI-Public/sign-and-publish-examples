@@ -1,0 +1,70 @@
+version: 2.1
+
+jobs:
+  blob_sign_test:
+    docker:
+      - image: cimg/go:1.25.4
+    environment:
+      - PIPELINE_DEFINITION_ID: "b5f2f49c-0add-5f14-a93c-9571a76aa4eb"
+      - SIGSTORE_ENV: "staging"
+    parameters:
+      cosign-version:
+        description: "Version of cosign to use"
+        default: "v3.0.3"
+        type: string
+    steps:
+      - checkout
+      - restore_cache:
+          name: Restore cosign cache
+          keys:
+            - cosign-<<parameters.cosign-version>>-{{ arch }}
+      - run:
+          name: install cosign
+          command: |
+            if [ -f ~/go/bin/cosign ]; then
+              echo "cosign already cached, skipping install"
+            else
+              echo "installing cosign"
+              go install github.com/sigstore/cosign/v3/cmd/cosign@<<parameters.cosign-version>>
+            fi
+      - save_cache:
+          name: Save cosign cache
+          key: cosign-<<parameters.cosign-version>>-{{ arch }}
+          paths:
+            - ~/go/bin/cosign
+            - ~/go/pkg/mod/github.com/sigstore
+      - run:
+          name: produce blob artifact to sign
+          command: |
+            echo "my oyster destroyed the love we once felt" > ./test-blob.txt
+      - run:
+          name: sign blob artifact
+          command: |
+            echo "run the sign script"
+            ./blob/sign.sh ./test-blob.txt
+      - run:
+          name: debug bundle
+          command: |
+            # echo "=== Bundle contents ==="
+            # cat ./test-blob.txt.bundle | jq .
+            # echo ""
+            echo "=== Certificate details ==="
+            cat ./test-blob.txt.bundle | jq -r '.verificationMaterial.certificate.rawBytes' | base64 -d | openssl x509 -inform DER -text -noout
+      - run:
+          name: verify blob artifact
+          command: |
+            echo "run the verify script"
+            ./blob/verify.sh ./test-blob.txt ./test-blob.txt.bundle
+      - store_artifacts:
+          path: ./test-blob.txt
+          destination: test-blob.txt
+      - store_artifacts:
+          path: ./test-blob.txt.bundle
+          destination: test-blob.txt.bundle
+
+workflows:
+  blob_sign_workflow:
+    jobs:
+      - blob_sign_test:
+          context:
+            - org-global

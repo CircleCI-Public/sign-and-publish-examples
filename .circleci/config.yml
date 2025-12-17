@@ -74,8 +74,6 @@ workflows:
   blob_sign_workflow:
     jobs:
       - blob_sign_test:
-          context:
-            - org-global
           sigstore-env: production
           filters:
             branches:
@@ -83,8 +81,6 @@ workflows:
                 - main
 
       - blob_sign_test:
-          context:
-            - org-global
           sigstore-env: staging
           filters:
             branches:

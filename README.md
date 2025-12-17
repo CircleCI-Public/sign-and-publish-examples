@@ -58,6 +58,8 @@ The pipeline automatically selects the Sigstore environment based on branch:
 - **`main` branch** → Production Sigstore
 - **Other branches** → Staging Sigstore
 
+You can see the example pipeline running here: https://app.circleci.com/pipelines/github/CircleCI-Public/sign-and-publish-examples
+
 ## Certificate Identity
 
 When verifying, the certificate identity follows this format:

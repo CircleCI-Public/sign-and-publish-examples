@@ -82,6 +82,11 @@ jobs:
           command: |
             echo "run the verify script"
             ./blob/verify.sh ./test-blob.txt ./test-blob.txt.bundle
+      - run:
+          name: validate claim
+          command: |
+            echo "run the verify script"
+            ./blob/validate-claims.sh ./test-blob.txt.bundle
       - store_artifacts:
           path: ./test-blob.txt
           destination: test-blob.txt

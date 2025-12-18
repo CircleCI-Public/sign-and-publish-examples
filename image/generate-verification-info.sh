@@ -59,11 +59,20 @@ raw_output=$(cosign verify "$image" \
 
 # Extract just the JSON array (starts with '[' and ends with ']')
 # The output has a text header before the JSON that we need to strip
-verify_output=$(echo "$raw_output" | grep -o '\[.*\]' | head -1 || echo "[]")
+# Use sed to handle potential multiline JSON - find first '[' to last ']'
+verify_output=$(echo "$raw_output" | sed -n '/^\[/,/\]$/p' | tr -d '\n' || echo "[]")
+if [ -z "$verify_output" ] || [ "$verify_output" = "[]" ]; then
+  # Fallback: try to extract using awk for more complex cases
+  verify_output=$(echo "$raw_output" | awk '/^\[/{found=1} found{print} /\]$/{if(found) exit}' | tr -d '\n' || echo "[]")
+fi
+
+echo "DEBUG: verify_output length: ${#verify_output}"
+echo "DEBUG: verify_output first 100 chars: ${verify_output:0:100}"
 
 if [ "$verify_output" != "[]" ] && [ -n "$verify_output" ]; then
   # Extract log index from Bundle.Payload.logIndex
   log_index=$(echo "$verify_output" | jq -r '.[0].optional.Bundle.Payload.logIndex // ""' 2>/dev/null || true)
+  echo "DEBUG: log_index extracted: $log_index"
   
   # Extract certificate from the bundle body
   # The body is base64 encoded, and contains spec.signature.publicKey.content which is the PEM cert (also base64)
@@ -95,6 +104,12 @@ if [ "$verify_output" != "[]" ] && [ -n "$verify_output" ]; then
   if [ -z "$runner_env" ]; then
     runner_env=$(echo "$verify_output" | jq -r '.[0].optional["1.3.6.1.4.1.57264.1.11"] // ""' 2>/dev/null || true)
   fi
+  
+  echo "DEBUG: source_repo_uri=$source_repo_uri"
+  echo "DEBUG: source_repo_ref=$source_repo_ref"
+  echo "DEBUG: build_signer_uri=$build_signer_uri"
+  echo "DEBUG: runner_env=$runner_env"
+  echo "DEBUG: optional keys=$(echo "$verify_output" | jq -r '.[0].optional | keys | join(", ")' 2>/dev/null || echo 'none')"
 fi
 
 # Build Rekor search URL if we have a log index

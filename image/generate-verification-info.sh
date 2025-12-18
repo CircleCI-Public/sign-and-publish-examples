@@ -50,22 +50,16 @@ build_signer_uri=""
 runner_env=""
 
 # Verify and capture the JSON output
-# cosign verify -o json returns an array with verification details
-echo "DEBUG: Running cosign verify for $image"
-verify_output=$(cosign verify "$image" \
+# cosign verify -o json returns text header + JSON array, so we need to extract just the JSON
+raw_output=$(cosign verify "$image" \
   --certificate-oidc-issuer "$oidc_issuer" \
   --certificate-identity "$certificate_identity" \
   --rekor-url "$rekor_url" \
   -o json 2>&1) || true
 
-echo "DEBUG: verify_output length: ${#verify_output}"
-echo "DEBUG: verify_output first 500 chars: ${verify_output:0:500}"
-
-# Check if output looks like an error
-if echo "$verify_output" | grep -q "Error:"; then
-  echo "DEBUG: cosign verify returned an error"
-  verify_output="[]"
-fi
+# Extract just the JSON array (starts with '[' and ends with ']')
+# The output has a text header before the JSON that we need to strip
+verify_output=$(echo "$raw_output" | grep -o '\[.*\]' | head -1 || echo "[]")
 
 if [ "$verify_output" != "[]" ] && [ -n "$verify_output" ]; then
   # Extract log index from Bundle.Payload.logIndex

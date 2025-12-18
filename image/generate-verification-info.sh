@@ -41,6 +41,21 @@ fi
 oidc_issuer="https://oidc.circleci.com/org/${CIRCLE_ORGANIZATION_ID}"
 certificate_identity="https://circleci.com/api/v2/projects/${CIRCLE_PROJECT_ID}/pipeline-definitions/${PIPELINE_DEFINITION_ID}"
 
+# First verify the image (this validates the signature)
+echo "Verifying image signature..."
+cosign verify "$image" \
+  --certificate-oidc-issuer "$oidc_issuer" \
+  --certificate-identity "$certificate_identity" \
+  --rekor-url "$rekor_url" > /dev/null 2>&1 || {
+    echo "Error: Image verification failed"
+    exit 1
+  }
+echo "Verification successful"
+
+# Download the signature to get full bundle data
+# cosign download signature returns JSON with Bundle.Payload.logIndex and Cert
+sig_data=$(cosign download signature "$image" 2>/dev/null | head -1)
+
 # Initialize variables
 log_index=""
 rekor_search_url=""
@@ -49,69 +64,45 @@ source_repo_ref=""
 build_signer_uri=""
 runner_env=""
 
-# Verify and capture the JSON output
-# cosign verify -o json returns text header + JSON array, so we need to extract just the JSON
-raw_output=$(cosign verify "$image" \
-  --certificate-oidc-issuer "$oidc_issuer" \
-  --certificate-identity "$certificate_identity" \
-  --rekor-url "$rekor_url" \
-  -o json 2>&1) || true
-
-# Extract just the JSON array (starts with '[' and ends with ']')
-# The output has a text header before the JSON that we need to strip
-# Use sed to handle potential multiline JSON - find first '[' to last ']'
-verify_output=$(echo "$raw_output" | sed -n '/^\[/,/\]$/p' | tr -d '\n' || echo "[]")
-if [ -z "$verify_output" ] || [ "$verify_output" = "[]" ]; then
-  # Fallback: try to extract using awk for more complex cases
-  verify_output=$(echo "$raw_output" | awk '/^\[/{found=1} found{print} /\]$/{if(found) exit}' | tr -d '\n' || echo "[]")
-fi
-
-echo "DEBUG: verify_output length: ${#verify_output}"
-echo "DEBUG: verify_output first 100 chars: ${verify_output:0:100}"
-echo "DEBUG: full JSON structure:"
-echo "$verify_output" | jq '.' 2>/dev/null || echo "DEBUG: failed to parse JSON"
-
-if [ "$verify_output" != "[]" ] && [ -n "$verify_output" ]; then
+if [ -n "$sig_data" ]; then
   # Extract log index from Bundle.Payload.logIndex
-  log_index=$(echo "$verify_output" | jq -r '.[0].optional.Bundle.Payload.logIndex // ""' 2>/dev/null || true)
-  echo "DEBUG: log_index extracted: $log_index"
+  log_index=$(echo "$sig_data" | jq -r '.Bundle.Payload.logIndex // ""' 2>/dev/null || true)
+  echo "DEBUG: log_index=$log_index"
   
-  # Extract certificate from the bundle body
-  # The body is base64 encoded, and contains spec.signature.publicKey.content which is the PEM cert (also base64)
-  cert_pem=$(echo "$verify_output" | jq -r '.[0].optional.Bundle.Payload.body // ""' 2>/dev/null | base64 -d 2>/dev/null | jq -r '.spec.signature.publicKey.content // ""' 2>/dev/null || true)
+  # Extract certificate - it's in .Cert.Raw (base64 DER) or we can use .Cert.Extensions
+  # The Extensions array contains OID values we need
   
-  if [ -n "$cert_pem" ]; then
-    # Decode PEM cert and extract extensions
-    cert_text=$(echo "$cert_pem" | base64 -d 2>/dev/null | openssl x509 -text -noout 2>/dev/null || true)
-    
-    if [ -n "$cert_text" ]; then
-      # Extract OID values - strip DER encoding prefixes
-      source_repo_uri=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.12:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
-      source_repo_ref=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.14:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
-      build_signer_uri=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.9:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^h]*//' || true)
-      runner_env=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.11:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
+  # Try to get OIDs from Cert.Extensions array
+  # OID 1.3.6.1.4.1.57264.1.12 = Source Repository URI
+  source_repo_uri=$(echo "$sig_data" | jq -r '.Cert.Extensions[] | select(.Id == [1,3,6,1,4,1,57264,1,12]) | .Value' 2>/dev/null | base64 -d 2>/dev/null || true)
+  
+  # OID 1.3.6.1.4.1.57264.1.14 = Source Repository Ref
+  source_repo_ref=$(echo "$sig_data" | jq -r '.Cert.Extensions[] | select(.Id == [1,3,6,1,4,1,57264,1,14]) | .Value' 2>/dev/null | base64 -d 2>/dev/null || true)
+  
+  # OID 1.3.6.1.4.1.57264.1.9 = Build Signer URI
+  build_signer_uri=$(echo "$sig_data" | jq -r '.Cert.Extensions[] | select(.Id == [1,3,6,1,4,1,57264,1,9]) | .Value' 2>/dev/null | base64 -d 2>/dev/null || true)
+  
+  # OID 1.3.6.1.4.1.57264.1.11 = Runner Environment
+  runner_env=$(echo "$sig_data" | jq -r '.Cert.Extensions[] | select(.Id == [1,3,6,1,4,1,57264,1,11]) | .Value' 2>/dev/null | base64 -d 2>/dev/null || true)
+  
+  # Fallback: decode cert and parse with openssl if Extensions method didn't work
+  if [ -z "$source_repo_uri" ] && [ -z "$source_repo_ref" ]; then
+    cert_raw=$(echo "$sig_data" | jq -r '.Cert.Raw // ""' 2>/dev/null)
+    if [ -n "$cert_raw" ]; then
+      cert_text=$(echo "$cert_raw" | base64 -d 2>/dev/null | openssl x509 -inform DER -text -noout 2>/dev/null || true)
+      if [ -n "$cert_text" ]; then
+        source_repo_uri=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.12:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
+        source_repo_ref=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.14:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
+        build_signer_uri=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.9:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^h]*//' || true)
+        runner_env=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.11:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
+      fi
     fi
-  fi
-  
-  # Also check if OIDs are directly in optional (some cosign versions include them there)
-  if [ -z "$source_repo_uri" ]; then
-    source_repo_uri=$(echo "$verify_output" | jq -r '.[0].optional["1.3.6.1.4.1.57264.1.12"] // ""' 2>/dev/null || true)
-  fi
-  if [ -z "$source_repo_ref" ]; then
-    source_repo_ref=$(echo "$verify_output" | jq -r '.[0].optional["1.3.6.1.4.1.57264.1.14"] // ""' 2>/dev/null || true)
-  fi
-  if [ -z "$build_signer_uri" ]; then
-    build_signer_uri=$(echo "$verify_output" | jq -r '.[0].optional["1.3.6.1.4.1.57264.1.9"] // ""' 2>/dev/null || true)
-  fi
-  if [ -z "$runner_env" ]; then
-    runner_env=$(echo "$verify_output" | jq -r '.[0].optional["1.3.6.1.4.1.57264.1.11"] // ""' 2>/dev/null || true)
   fi
   
   echo "DEBUG: source_repo_uri=$source_repo_uri"
   echo "DEBUG: source_repo_ref=$source_repo_ref"
   echo "DEBUG: build_signer_uri=$build_signer_uri"
   echo "DEBUG: runner_env=$runner_env"
-  echo "DEBUG: optional keys=$(echo "$verify_output" | jq -r '.[0].optional | keys | join(", ")' 2>/dev/null || echo 'none')"
 fi
 
 # Build Rekor search URL if we have a log index

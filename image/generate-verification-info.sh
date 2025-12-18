@@ -32,8 +32,10 @@ fi
 
 if [ "$SIGSTORE_ENV" = "staging" ]; then
   rekor_search_base="https://search.sigstage.dev"
+  rekor_url="https://rekor.sigstage.dev"
 else
   rekor_search_base="https://search.sigstore.dev"
+  rekor_url="https://rekor.sigstore.dev"
 fi
 
 oidc_issuer="https://oidc.circleci.com/org/${CIRCLE_ORGANIZATION_ID}"
@@ -47,33 +49,24 @@ source_repo_ref=""
 build_signer_uri=""
 runner_env=""
 
-# Verify and capture the output which includes certificate and tlog info
-# cosign verify --output-json returns JSON with verification details
-verify_output=$(cosign verify "$image" \
+# Create temp files for certificate and bundle
+cert_file=$(mktemp)
+bundle_file=$(mktemp)
+trap "rm -f $cert_file $bundle_file" EXIT
+
+# Verify and save the certificate to a file
+# --output-certificate saves the PEM certificate used for signing
+if cosign verify "$image" \
   --certificate-oidc-issuer "$oidc_issuer" \
   --certificate-identity "$certificate_identity" \
-  --output-json 2>/dev/null || echo "[]")
+  --rekor-url "$rekor_url" \
+  --output-certificate "$cert_file" \
+  --output-certificate-chain /dev/null \
+  2>/dev/null; then
 
-if [ "$verify_output" != "[]" ] && [ -n "$verify_output" ]; then
-  # Try to extract log index from the bundle in verification output
-  # The structure varies, so we try multiple paths
-  log_index=$(echo "$verify_output" | jq -r '.[0].optional.Bundle.Payload.logIndex // .[0].bundle.Payload.logIndex // ""' 2>/dev/null || true)
-  
-  # Extract the certificate from the verification output
-  # cosign verify --output-json includes the cert in various locations depending on version
-  cert_base64=$(echo "$verify_output" | jq -r '
-    .[0].optional.Bundle.Payload.body // "" | 
-    if . != "" then (. | @base64d | fromjson | .spec.signature.publicKey.content // "") else "" end
-  ' 2>/dev/null || true)
-  
-  # If that didn't work, try another path
-  if [ -z "$cert_base64" ]; then
-    cert_base64=$(echo "$verify_output" | jq -r '.[0].optional.bundle.verificationMaterial.certificate.rawBytes // ""' 2>/dev/null || true)
-  fi
-  
-  if [ -n "$cert_base64" ]; then
-    # Decode and extract certificate extensions
-    cert_text=$(echo "$cert_base64" | base64 -d 2>/dev/null | openssl x509 -inform DER -text -noout 2>/dev/null || true)
+  # Parse the certificate for provenance claims
+  if [ -s "$cert_file" ]; then
+    cert_text=$(openssl x509 -in "$cert_file" -text -noout 2>/dev/null || true)
     
     if [ -n "$cert_text" ]; then
       # Extract OID values - strip DER encoding prefixes
@@ -82,6 +75,13 @@ if [ "$verify_output" != "[]" ] && [ -n "$verify_output" ]; then
       build_signer_uri=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.9:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^h]*//' || true)
       runner_env=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.11:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
     fi
+  fi
+
+  # Get the log index by downloading the signature bundle
+  # cosign download signature gives us the bundle with tlog entry
+  sig_bundle=$(cosign download signature "$image" --rekor-url "$rekor_url" 2>/dev/null | head -1 || true)
+  if [ -n "$sig_bundle" ]; then
+    log_index=$(echo "$sig_bundle" | jq -r '.Bundle.Payload.logIndex // .bundle.Payload.logIndex // ""' 2>/dev/null || true)
   fi
 fi
 

@@ -49,24 +49,25 @@ source_repo_ref=""
 build_signer_uri=""
 runner_env=""
 
-# Create temp files for certificate and bundle
-cert_file=$(mktemp)
-bundle_file=$(mktemp)
-trap "rm -f $cert_file $bundle_file" EXIT
-
-# Verify and save the certificate to a file
-# --output-certificate saves the PEM certificate used for signing
-if cosign verify "$image" \
+# Verify and capture the JSON output
+# cosign verify -o json returns an array with verification details
+verify_output=$(cosign verify "$image" \
   --certificate-oidc-issuer "$oidc_issuer" \
   --certificate-identity "$certificate_identity" \
   --rekor-url "$rekor_url" \
-  --output-certificate "$cert_file" \
-  --output-certificate-chain /dev/null \
-  2>/dev/null; then
+  -o json 2>/dev/null || echo "[]")
 
-  # Parse the certificate for provenance claims
-  if [ -s "$cert_file" ]; then
-    cert_text=$(openssl x509 -in "$cert_file" -text -noout 2>/dev/null || true)
+if [ "$verify_output" != "[]" ] && [ -n "$verify_output" ]; then
+  # Extract log index from Bundle.Payload.logIndex
+  log_index=$(echo "$verify_output" | jq -r '.[0].optional.Bundle.Payload.logIndex // ""' 2>/dev/null || true)
+  
+  # Extract certificate from the bundle body
+  # The body is base64 encoded, and contains spec.signature.publicKey.content which is the PEM cert (also base64)
+  cert_pem=$(echo "$verify_output" | jq -r '.[0].optional.Bundle.Payload.body // ""' 2>/dev/null | base64 -d 2>/dev/null | jq -r '.spec.signature.publicKey.content // ""' 2>/dev/null || true)
+  
+  if [ -n "$cert_pem" ]; then
+    # Decode PEM cert and extract extensions
+    cert_text=$(echo "$cert_pem" | base64 -d 2>/dev/null | openssl x509 -text -noout 2>/dev/null || true)
     
     if [ -n "$cert_text" ]; then
       # Extract OID values - strip DER encoding prefixes
@@ -76,12 +77,19 @@ if cosign verify "$image" \
       runner_env=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.11:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
     fi
   fi
-
-  # Get the log index by downloading the signature bundle
-  # cosign download signature gives us the bundle with tlog entry
-  sig_bundle=$(cosign download signature "$image" --rekor-url "$rekor_url" 2>/dev/null | head -1 || true)
-  if [ -n "$sig_bundle" ]; then
-    log_index=$(echo "$sig_bundle" | jq -r '.Bundle.Payload.logIndex // .bundle.Payload.logIndex // ""' 2>/dev/null || true)
+  
+  # Also check if OIDs are directly in optional (some cosign versions include them there)
+  if [ -z "$source_repo_uri" ]; then
+    source_repo_uri=$(echo "$verify_output" | jq -r '.[0].optional["1.3.6.1.4.1.57264.1.12"] // ""' 2>/dev/null || true)
+  fi
+  if [ -z "$source_repo_ref" ]; then
+    source_repo_ref=$(echo "$verify_output" | jq -r '.[0].optional["1.3.6.1.4.1.57264.1.14"] // ""' 2>/dev/null || true)
+  fi
+  if [ -z "$build_signer_uri" ]; then
+    build_signer_uri=$(echo "$verify_output" | jq -r '.[0].optional["1.3.6.1.4.1.57264.1.9"] // ""' 2>/dev/null || true)
+  fi
+  if [ -z "$runner_env" ]; then
+    runner_env=$(echo "$verify_output" | jq -r '.[0].optional["1.3.6.1.4.1.57264.1.11"] // ""' 2>/dev/null || true)
   fi
 fi
 

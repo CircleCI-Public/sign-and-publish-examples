@@ -68,6 +68,8 @@ fi
 
 echo "DEBUG: verify_output length: ${#verify_output}"
 echo "DEBUG: verify_output first 100 chars: ${verify_output:0:100}"
+echo "DEBUG: full JSON structure:"
+echo "$verify_output" | jq '.' 2>/dev/null || echo "DEBUG: failed to parse JSON"
 
 if [ "$verify_output" != "[]" ] && [ -n "$verify_output" ]; then
   # Extract log index from Bundle.Payload.logIndex

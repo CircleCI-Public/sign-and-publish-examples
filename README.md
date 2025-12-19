@@ -10,11 +10,11 @@ This project demonstrates how to use **cosign** to sign both blob artifacts and 
 
 - **`blob/sign.sh`** - Script to sign a blob artifact using cosign
 - **`blob/verify.sh`** - Script to verify a signed blob artifact
-- **`blob/validate-claims.sh`** - Script to validate certificate claims from a bundle (e.g., reject SSH reruns)
 - **`blob/generate-verification-info.sh`** - Generate verification info JSON with provenance claims
 - **`image/sign.sh`** - Script to sign a container image using cosign
 - **`image/verify.sh`** - Script to verify a signed container image
 - **`image/generate-verification-info.sh`** - Generate verification info JSON with provenance claims
+- **`validate-verification-info.sh`** - Validate provenance policies (e.g., reject SSH reruns)
 - **`.circleci/config.yml`** - CircleCI pipeline configuration
 
 ## How It Works
@@ -56,15 +56,29 @@ PIPELINE_DEFINITION_ID=<your-id> ./blob/verify.sh ./artifact ./artifact.bundle
 SIGSTORE_ENV=staging PIPELINE_DEFINITION_ID=<your-id> ./blob/verify.sh ./artifact ./artifact.bundle
 ```
 
-### Validating Claims
+### Generating Verification Info
 
-You can validate certificate claims from the bundle to enforce additional policies:
+After signing and verifying, generate a verification info JSON file:
 
 ```bash
-./blob/validate-claims.sh ./artifact.bundle
+# For blobs
+./blob/generate-verification-info.sh ./artifact ./artifact.bundle ./artifact.verification.json
+
+# For images
+./image/generate-verification-info.sh ttl.sh/my-image:1h ./image-verification.json
 ```
 
-This script checks for SSH rerun environments and rejects artifacts signed during SSH debug sessions.
+### Validating Policies
+
+Validate the verification info against security policies:
+
+```bash
+./validate-verification-info.sh ./artifact.verification.json
+```
+
+This script validates the provenance claims and rejects artifacts that don't meet policy requirements. By default, it rejects artifacts signed during SSH debug sessions (`runner_environment = "ssh-rerun"`).
+
+You can extend the script to enforce additional policies like requiring specific branches or repositories.
 
 ### Container Image Signing
 
@@ -92,11 +106,11 @@ The pipeline includes two workflows:
 
 ### Blob Sign Workflow
 
-Signs and verifies blob artifacts, then validates certificate claims.
+Signs and verifies blob artifacts, generates verification info, and validates policies.
 
 ### Container Sign Workflow
 
-Signs and verifies container images using [ttl.sh](https://ttl.sh) for ephemeral test images.
+Signs and verifies container images using [ttl.sh](https://ttl.sh) for ephemeral test images, generates verification info, and validates policies.
 
 Both workflows automatically select the Sigstore environment based on branch:
 
@@ -186,4 +200,6 @@ This allows consumers to enforce policies like:
 
 - **Only accept artifacts built from `main` branch** — check `source_repository_ref`
 - **Only accept artifacts from a specific repository** — check `source_repository_uri`
-- **Reject SSH debug session builds** — check `runner_environment` (see `validate-claims.sh`)
+- **Reject SSH debug session builds** — check `runner_environment`
+
+The `validate-verification-info.sh` script demonstrates this by rejecting artifacts where `runner_environment` is `ssh-rerun`. You can extend it to add your own policy requirements.

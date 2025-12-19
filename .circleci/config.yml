@@ -83,16 +83,15 @@ jobs:
             echo "run the verify script"
             ./blob/verify.sh ./test-blob.txt ./test-blob.txt.bundle
       - run:
-          name: validate claim
-          command: |
-            echo "run the verify script"
-            ./blob/validate-claims.sh ./test-blob.txt.bundle
-      - run:
           name: generate verification info
           command: |
             ./blob/generate-verification-info.sh ./test-blob.txt ./test-blob.txt.bundle ./test-blob.txt.verification.json
             echo "=== Verification Info ==="
             cat ./test-blob.txt.verification.json
+      - run:
+          name: validate policies
+          command: |
+            ./validate-verification-info.sh ./test-blob.txt.verification.json
       - store_artifacts:
           path: ./test-blob.txt
           destination: test-blob.txt
@@ -143,6 +142,10 @@ jobs:
             ./image/generate-verification-info.sh "ttl.sh/${CIRCLE_WORKFLOW_ID}:1h" ./image-verification.json
             echo "=== Verification Info ==="
             cat ./image-verification.json
+      - run:
+          name: validate policies
+          command: |
+            ./validate-verification-info.sh ./image-verification.json
       - store_artifacts:
           path: ./image-verification.json
           destination: image-verification.json

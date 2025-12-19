@@ -52,9 +52,13 @@ cosign verify "$image" \
   }
 echo "Verification successful"
 
+# Show signature tree
+echo "DEBUG: cosign tree output:"
+cosign tree "$image" 2>&1 || true
+
 # Download the signature to get full bundle data
-# cosign download signature returns JSON with Bundle.Payload.logIndex and Cert
-sig_data=$(cosign download signature "$image" 2>/dev/null | head -1)
+echo "DEBUG: running cosign download signature..."
+sig_data=$(cosign download signature "$image" 2>&1 | head -1)
 
 echo "DEBUG: sig_data length: ${#sig_data}"
 echo "DEBUG: sig_data first 500 chars:"

@@ -75,37 +75,41 @@ build_signer_uri=""
 runner_env=""
 
 if [ -n "$sig_data" ]; then
-  # Extract log index from Bundle.Payload.logIndex
-  log_index=$(echo "$sig_data" | jq -r '.Bundle.Payload.logIndex // ""' 2>/dev/null || true)
+  # Check bundle format - new v0.3 format vs legacy format
+  media_type=$(echo "$sig_data" | jq -r '.mediaType // ""' 2>/dev/null || true)
+  
+  if [[ "$media_type" == *"sigstore.bundle"* ]]; then
+    # New Sigstore bundle v0.3 format
+    echo "DEBUG: Using new bundle v0.3 format"
+    
+    # Extract log index from verificationMaterial.tlogEntries[0].logIndex
+    log_index=$(echo "$sig_data" | jq -r '.verificationMaterial.tlogEntries[0].logIndex // ""' 2>/dev/null || true)
+    echo "DEBUG: log_index=$log_index"
+    
+    # Extract certificate from verificationMaterial.certificate.rawBytes (base64 DER)
+    cert_raw=$(echo "$sig_data" | jq -r '.verificationMaterial.certificate.rawBytes // ""' 2>/dev/null || true)
+  else
+    # Legacy format
+    echo "DEBUG: Using legacy bundle format"
+    log_index=$(echo "$sig_data" | jq -r '.Bundle.Payload.logIndex // ""' 2>/dev/null || true)
+    cert_raw=$(echo "$sig_data" | jq -r '.Cert.Raw // ""' 2>/dev/null || true)
+  fi
+  
   echo "DEBUG: log_index=$log_index"
+  echo "DEBUG: cert_raw length=${#cert_raw}"
   
-  # Extract certificate - it's in .Cert.Raw (base64 DER) or we can use .Cert.Extensions
-  # The Extensions array contains OID values we need
-  
-  # Try to get OIDs from Cert.Extensions array
-  # OID 1.3.6.1.4.1.57264.1.12 = Source Repository URI
-  source_repo_uri=$(echo "$sig_data" | jq -r '.Cert.Extensions[] | select(.Id == [1,3,6,1,4,1,57264,1,12]) | .Value' 2>/dev/null | base64 -d 2>/dev/null || true)
-  
-  # OID 1.3.6.1.4.1.57264.1.14 = Source Repository Ref
-  source_repo_ref=$(echo "$sig_data" | jq -r '.Cert.Extensions[] | select(.Id == [1,3,6,1,4,1,57264,1,14]) | .Value' 2>/dev/null | base64 -d 2>/dev/null || true)
-  
-  # OID 1.3.6.1.4.1.57264.1.9 = Build Signer URI
-  build_signer_uri=$(echo "$sig_data" | jq -r '.Cert.Extensions[] | select(.Id == [1,3,6,1,4,1,57264,1,9]) | .Value' 2>/dev/null | base64 -d 2>/dev/null || true)
-  
-  # OID 1.3.6.1.4.1.57264.1.11 = Runner Environment
-  runner_env=$(echo "$sig_data" | jq -r '.Cert.Extensions[] | select(.Id == [1,3,6,1,4,1,57264,1,11]) | .Value' 2>/dev/null | base64 -d 2>/dev/null || true)
-  
-  # Fallback: decode cert and parse with openssl if Extensions method didn't work
-  if [ -z "$source_repo_uri" ] && [ -z "$source_repo_ref" ]; then
-    cert_raw=$(echo "$sig_data" | jq -r '.Cert.Raw // ""' 2>/dev/null)
-    if [ -n "$cert_raw" ]; then
-      cert_text=$(echo "$cert_raw" | base64 -d 2>/dev/null | openssl x509 -inform DER -text -noout 2>/dev/null || true)
-      if [ -n "$cert_text" ]; then
-        source_repo_uri=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.12:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
-        source_repo_ref=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.14:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
-        build_signer_uri=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.9:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^h]*//' || true)
-        runner_env=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.11:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
-      fi
+  # Decode cert and extract OID extensions using openssl
+  if [ -n "$cert_raw" ]; then
+    cert_text=$(echo "$cert_raw" | base64 -d 2>/dev/null | openssl x509 -inform DER -text -noout 2>/dev/null || true)
+    
+    if [ -n "$cert_text" ]; then
+      echo "DEBUG: cert_text length=${#cert_text}"
+      
+      # Extract OID values - strip DER encoding prefixes
+      source_repo_uri=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.12:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
+      source_repo_ref=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.14:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
+      build_signer_uri=$(echo "$sig_data" | grep -A1 "1.3.6.1.4.1.57264.1.9:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^h]*//' || true)
+      runner_env=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.11:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
     fi
   fi
   

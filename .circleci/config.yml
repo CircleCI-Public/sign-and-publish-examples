@@ -71,7 +71,7 @@ jobs:
           name: sign blob artifact
           command: |
             echo "run the sign script"
-            ./blob/sign.sh ./test-blob.txt
+            ./cosign/blob/sign.sh ./test-blob.txt
       - run:
           name: debug bundle
           command: |
@@ -81,17 +81,17 @@ jobs:
           name: verify blob artifact
           command: |
             echo "run the verify script"
-            ./blob/verify.sh ./test-blob.txt ./test-blob.txt.bundle
+            ./cosign/blob/verify.sh ./test-blob.txt ./test-blob.txt.bundle
       - run:
           name: generate verification info
           command: |
-            ./blob/generate-verification-info.sh ./test-blob.txt ./test-blob.txt.bundle ./test-blob.txt.verification.json
+            ./cosign/blob/generate-verification-info.sh ./test-blob.txt ./test-blob.txt.bundle ./test-blob.txt.verification.json
             echo "=== Verification Info ==="
             cat ./test-blob.txt.verification.json
       - run:
           name: validate policies
           command: |
-            ./validate-verification-info.sh ./test-blob.txt.verification.json
+            ./cosign/validate-verification-info.sh ./test-blob.txt.verification.json
       - store_artifacts:
           path: ./test-blob.txt
           destination: test-blob.txt
@@ -130,22 +130,22 @@ jobs:
           name: sign test image
           command: |
             echo "run the sign script"
-            ./image/sign.sh "ttl.sh/${CIRCLE_WORKFLOW_ID}:1h"
+            ./cosign/image/sign.sh "ttl.sh/${CIRCLE_WORKFLOW_ID}:1h"
       - run:
           name: verify test image
           command: |
             echo "run the verify script"
-            ./image/verify.sh "ttl.sh/${CIRCLE_WORKFLOW_ID}:1h"
+            ./cosign/image/verify.sh "ttl.sh/${CIRCLE_WORKFLOW_ID}:1h"
       - run:
           name: generate verification info
           command: |
-            ./image/generate-verification-info.sh "ttl.sh/${CIRCLE_WORKFLOW_ID}:1h" ./image-verification.json
+            ./cosign/image/generate-verification-info.sh "ttl.sh/${CIRCLE_WORKFLOW_ID}:1h" ./image-verification.json
             echo "=== Verification Info ==="
             cat ./image-verification.json
       - run:
           name: validate policies
           command: |
-            ./validate-verification-info.sh ./image-verification.json
+            ./cosign/validate-verification-info.sh ./image-verification.json
       - store_artifacts:
           path: ./image-verification.json
           destination: image-verification.json

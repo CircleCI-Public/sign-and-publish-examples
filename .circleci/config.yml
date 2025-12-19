@@ -1,0 +1,188 @@
+version: 2.1
+
+commands:
+  install-cosign:
+    description: "Install cosign with caching"
+    parameters:
+      version:
+        description: "Version of cosign to use"
+        default: "v3.0.3"
+        type: string
+    steps:
+      - restore_cache:
+          name: Restore cosign cache
+          keys:
+            - cosign-<<parameters.version>>-{{ arch }}
+      - run:
+          name: install cosign
+          command: |
+            if [ -f ~/go/bin/cosign ]; then
+              echo "cosign already cached, skipping install"
+            else
+              echo "installing cosign"
+              go install github.com/sigstore/cosign/v3/cmd/cosign@<<parameters.version>>
+            fi
+      - save_cache:
+          name: Save cosign cache
+          key: cosign-<<parameters.version>>-{{ arch }}
+          paths:
+            - ~/go/bin/cosign
+            - ~/go/pkg/mod/github.com/sigstore
+  set-sigstore-env:
+    description: "Set SIGSTORE_ENV environment variable"
+    parameters:
+      sigstore-env:
+        description: "SIGSTORE_ENV value"
+        type: string
+    steps:
+      - run:
+          name: set SIGSTORE_ENV
+          command: |
+            echo 'export SIGSTORE_ENV="<<parameters.sigstore-env>>"' >> "$BASH_ENV"
+            source "$BASH_ENV"
+
+# todo change to stock linux container?
+jobs:
+  blob_sign_example:
+    docker:
+      - image: cimg/go:1.25.4
+    environment:
+      - PIPELINE_DEFINITION_ID: "46322274-27e9-570a-832a-d0be5c3987b9"
+    parameters:
+      cosign-version:
+        description: "Version of cosign to use"
+        default: "v3.0.3"
+        type: string
+      sigstore-env:
+        description: "SIGSTORE_ENV override; if empty, derived from branch"
+        default: ""
+        type: string
+    steps:
+      - checkout
+      - set-sigstore-env:
+          sigstore-env: <<parameters.sigstore-env>>
+      - install-cosign:
+          version: <<parameters.cosign-version>>
+      - run:
+          name: produce blob artifact to sign
+          command: |
+            echo "my oyster destroyed the love we once felt" > ./test-blob.txt
+      - run:
+          name: sign blob artifact
+          command: |
+            echo "run the sign script"
+            ./cosign/blob/sign.sh ./test-blob.txt
+      - run:
+          name: debug bundle
+          command: |
+            echo "=== Certificate details ==="
+            cat ./test-blob.txt.bundle | jq -r '.verificationMaterial.certificate.rawBytes' | base64 -d | openssl x509 -inform DER -text -noout
+      - run:
+          name: verify blob artifact
+          command: |
+            echo "run the verify script"
+            ./cosign/blob/verify.sh ./test-blob.txt ./test-blob.txt.bundle
+      - run:
+          name: generate verification info
+          command: |
+            ./cosign/blob/generate-verification-info.sh ./test-blob.txt ./test-blob.txt.bundle ./test-blob.txt.verification.json
+            echo "=== Verification Info ==="
+            cat ./test-blob.txt.verification.json
+      - run:
+          name: validate policies
+          command: |
+            ./cosign/validate-verification-info.sh ./test-blob.txt.verification.json
+      - store_artifacts:
+          path: ./test-blob.txt
+          destination: test-blob.txt
+      - store_artifacts:
+          path: ./test-blob.txt.bundle
+          destination: test-blob.txt.bundle
+      - store_artifacts:
+          path: ./test-blob.txt.verification.json
+          destination: test-blob.txt.verification.json
+
+  container_sign_example:
+    docker:
+      - image: cimg/go:1.25.4
+    environment:
+      - PIPELINE_DEFINITION_ID: "46322274-27e9-570a-832a-d0be5c3987b9"
+    parameters:
+      cosign-version:
+        description: "Version of cosign to use"
+        default: "v3.0.3"
+        type: string
+      sigstore-env:
+        description: "SIGSTORE_ENV override; if empty, derived from branch"
+        default: ""
+        type: string
+    steps:
+      - checkout
+      - set-sigstore-env:
+          sigstore-env: <<parameters.sigstore-env>>
+      - install-cosign:
+          version: <<parameters.cosign-version>>
+      - run:
+          name: create test image
+          command: |
+            cosign copy alpine "ttl.sh/${CIRCLE_WORKFLOW_ID}:1h"
+      - run:
+          name: sign test image
+          command: |
+            echo "run the sign script"
+            ./cosign/image/sign.sh "ttl.sh/${CIRCLE_WORKFLOW_ID}:1h"
+      - run:
+          name: verify test image
+          command: |
+            echo "run the verify script"
+            ./cosign/image/verify.sh "ttl.sh/${CIRCLE_WORKFLOW_ID}:1h"
+      - run:
+          name: generate verification info
+          command: |
+            ./cosign/image/generate-verification-info.sh "ttl.sh/${CIRCLE_WORKFLOW_ID}:1h" ./image-verification.json
+            echo "=== Verification Info ==="
+            cat ./image-verification.json
+      - run:
+          name: validate policies
+          command: |
+            ./cosign/validate-verification-info.sh ./image-verification.json
+      - store_artifacts:
+          path: ./image-verification.json
+          destination: image-verification.json
+
+workflows:
+  blob_sign_workflow:
+    jobs:
+      - blob_sign_example:
+          name: Blob Sign Workflow Production
+          sigstore-env: production
+          filters:
+            branches:
+              only:
+                - main
+
+      - blob_sign_example:
+          name: Blob Sign Workflow Staging
+          sigstore-env: staging
+          filters:
+            branches:
+              ignore:
+                - main
+
+  container_sign_workflow:
+    jobs:
+      - container_sign_example:
+          name: Container Sign Workflow Production
+          sigstore-env: staging
+          filters:
+            branches:
+              only:
+                - main
+
+      - container_sign_example:
+          name: Container Sign Workflow Staging
+          sigstore-env: staging
+          filters:
+            branches:
+              ignore:
+                - main

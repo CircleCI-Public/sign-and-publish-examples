@@ -56,6 +56,12 @@ echo "Verification successful"
 # cosign download signature returns JSON with Bundle.Payload.logIndex and Cert
 sig_data=$(cosign download signature "$image" 2>/dev/null | head -1)
 
+echo "DEBUG: sig_data length: ${#sig_data}"
+echo "DEBUG: sig_data first 500 chars:"
+echo "${sig_data:0:500}"
+echo "DEBUG: sig_data keys:"
+echo "$sig_data" | jq 'keys' 2>/dev/null || echo "DEBUG: failed to parse sig_data as JSON"
+
 # Initialize variables
 log_index=""
 rekor_search_url=""

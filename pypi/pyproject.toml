@@ -1,0 +1,15 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "circleci-sign-publish-example"
+authors = [{name = "CircleCI", email = "hello@circleci.com"}]
+description = "A minimal example of publishing to PyPI from CircleCI"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+dynamic = ["version"]
+
+[project.urls]
+Repository = "https://github.com/CircleCI-Public/sign-and-publish-examples"

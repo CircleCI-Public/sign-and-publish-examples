@@ -1,15 +1,15 @@
 [build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
+requires = ["uv_build >= 0.9.21, <0.10.0"]
+build-backend = "uv_build"
 
 [project]
 name = "circleci-sign-publish-example"
+version = "0.0.0"
 authors = [{name = "CircleCI", email = "hello@circleci.com"}]
 description = "A minimal example of publishing to PyPI from CircleCI"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.8"
-dynamic = ["version"]
 
 [project.urls]
 Repository = "https://github.com/CircleCI-Public/sign-and-publish-examples"

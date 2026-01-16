@@ -4,6 +4,14 @@ A minimal example of building and publishing a Python package to PyPI using Circ
 
 ## Local Usage
 
+### Prerequisites
+
+You'll need `uv` installed. Install it from [astral.sh/uv](https://docs.astral.sh/uv/):
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
 ### Build
 
 ```bash
@@ -13,14 +21,13 @@ cd pypi
 
 This will:
 - Generate a unique version based on environment (`PYPI_ENV`)
-- Install the `build` package
-- Create distributions (wheel and sdist) in `dist/`
+- Use `uv build` to create distributions (wheel and sdist) in `dist/`
 
 ### Install and Test
 
 ```bash
 pip install dist/circleci_sign_publish_example-*.whl
-python -c "import sign_publish_pypi_example; print(sign_publish_pypi_example.hello())"
+python -c "import circleci_sign_publish_example; print(circleci_sign_publish_example.hello())"
 ```
 
 ### Publish (Locally)

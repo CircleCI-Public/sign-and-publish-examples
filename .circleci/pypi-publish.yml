@@ -1,0 +1,62 @@
+version: 2.1
+
+commands:
+  set-pypi-env:
+    description: "Set PYPI_ENV environment variable"
+    parameters:
+      pypi-env:
+        description: "PYPI_ENV value (staging or production)"
+        type: string
+    steps:
+      - run:
+          name: set PYPI_ENV
+          command: |
+            echo 'export PYPI_ENV="<<parameters.pypi-env>>"' >> "$BASH_ENV"
+            source "$BASH_ENV"
+
+jobs:
+  pypi_publish_example:
+    docker:
+      - image: cimg/python:3.11
+    parameters:
+      pypi-env:
+        description: "PYPI_ENV value (staging or production)"
+        type: string
+    steps:
+      - checkout
+      - set-pypi-env:
+          pypi-env: <<parameters.pypi-env>>
+      - run:
+          name: build distributions
+          command: |
+            cd pypi && ./build.sh
+      - run:
+          name: publish to PyPI
+          command: |
+            cd pypi && ./publish.sh
+      - store_artifacts:
+          path: pypi/dist
+          destination: pypi-distributions
+
+workflows:
+  pypi_publish_production:
+    jobs:
+      - pypi_publish_example:
+          name: PyPI Publish Production
+          pypi-env: production
+          context: pypi-production
+          filters:
+            branches:
+              only:
+                - main
+
+  pypi_publish_staging:
+    jobs:
+      - pypi_publish_example:
+          name: PyPI Publish Staging
+          pypi-env: staging
+          context: pypi-staging
+          filters:
+            branches:
+              ignore:
+                - main

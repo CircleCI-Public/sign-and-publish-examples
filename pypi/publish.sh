@@ -11,7 +11,7 @@
 #   PYPI_ENV          - either "staging", "production", or "local" (required)
 #   TWINE_USERNAME    - PyPI username (usually "__token__")
 #   TWINE_PASSWORD    - PyPI API token (required, will not be echoed)
-#   LOCAL_PYPI_URL    - Local PyPI repository URL (used when PYPI_ENV=local, defaults to http://localhost:8080)
+#   LOCAL_PYPI_URL    - Local PyPI repository URL (used when PYPI_ENV=local, defaults to http://localhost)
 
 set -e
 
@@ -48,7 +48,7 @@ case "$PYPI_ENV" in
     REPO_NAME="PyPI"
     ;;
   local)
-    REPO_URL="${LOCAL_PYPI_URL:-http://localhost:8080}"
+    REPO_URL="${LOCAL_PYPI_URL:-http://localhost}"
     REPO_NAME="Local PyPI"
     ;;
 esac

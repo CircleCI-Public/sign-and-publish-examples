@@ -3,6 +3,11 @@
 ## Project Overview
 Repository of CircleCI examples demonstrating signing and publishing artifacts with various tools. Each example shows a complete workflow from CircleCI to signing to verification.
 
+## Workflow to follow
+- Always use conventional commits
+- Always commit your work after its validated
+- Always keep things simple and readable
+
 ## Architecture & Structure
 Each example is self-contained in its own directory:
 - **`cosign/`** - Sigstore/cosign example (bash scripts)
@@ -35,8 +40,3 @@ Each example is self-contained in its own directory:
 **PyPI (Python):**
 - Use black for code formatting
 - Follow Python conventions when implemented
-
-## Workflow to follow
-- Always use conventional commits
-- Always commit your work after its validated
-- Always keep things simple and readable

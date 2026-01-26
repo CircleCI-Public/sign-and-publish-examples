@@ -32,16 +32,24 @@ python -c "import circleci_sign_publish_example; print(circleci_sign_publish_exa
 
 ### Publish (Locally)
 
+**To TestPyPI (staging):**
 ```bash
-# Set environment (staging or production)
 export PYPI_ENV=staging
 export TWINE_USERNAME="__token__"
 export TWINE_PASSWORD="<your-test-pypi-token>"
-
 ./publish.sh
 ```
 
-**Note:** Publishing locally requires valid PyPI credentials. For testing, use TestPyPI.
+**To Local PyPI instance:**
+```bash
+export PYPI_ENV=local
+export TWINE_USERNAME="<your-local-username>"
+export TWINE_PASSWORD="<your-local-password>"
+export LOCAL_PYPI_URL="http://localhost:8080"  # optional, defaults to http://localhost:8080
+./publish.sh
+```
+
+**Note:** Publishing requires valid credentials. For testing against a local instance, ensure your PyPI server is running and accessible.
 
 ## CircleCI Workflow
 

@@ -2,26 +2,27 @@
 # Publish Python package distributions to PyPI or TestPyPI using twine
 #
 # Usage:
-#   export PYPI_ENV=staging  # or production
+#   export PYPI_ENV=staging  # or production, or local
 #   export TWINE_USERNAME="__token__"
 #   export TWINE_PASSWORD="<your-pypi-token>"
 #   ./publish.sh
 #
 # Environment variables:
-#   PYPI_ENV          - either "staging" or "production" (required)
+#   PYPI_ENV          - either "staging", "production", or "local" (required)
 #   TWINE_USERNAME    - PyPI username (usually "__token__")
 #   TWINE_PASSWORD    - PyPI API token (required, will not be echoed)
+#   LOCAL_PYPI_URL    - Local PyPI repository URL (used when PYPI_ENV=local, defaults to http://localhost:8080)
 
 set -e
 
 # Validate PYPI_ENV
 if [ -z "$PYPI_ENV" ]; then
-  echo "Error: PYPI_ENV not set (must be 'staging' or 'production')" >&2
+  echo "Error: PYPI_ENV not set (must be 'staging', 'production', or 'local')" >&2
   exit 1
 fi
 
-if [ "$PYPI_ENV" != "staging" ] && [ "$PYPI_ENV" != "production" ]; then
-  echo "Error: PYPI_ENV must be 'staging' or 'production', got '$PYPI_ENV'" >&2
+if [ "$PYPI_ENV" != "staging" ] && [ "$PYPI_ENV" != "production" ] && [ "$PYPI_ENV" != "local" ]; then
+  echo "Error: PYPI_ENV must be 'staging', 'production', or 'local', got '$PYPI_ENV'" >&2
   exit 1
 fi
 
@@ -45,6 +46,10 @@ case "$PYPI_ENV" in
   production)
     REPO_URL="https://upload.pypi.org/legacy/"
     REPO_NAME="PyPI"
+    ;;
+  local)
+    REPO_URL="${LOCAL_PYPI_URL:-http://localhost:8080}"
+    REPO_NAME="Local PyPI"
     ;;
 esac
 

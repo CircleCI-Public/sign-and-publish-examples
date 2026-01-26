@@ -33,11 +33,14 @@ case "$PYPI_ENV" in
     VERSION="0.0.0.post${BUILD_NUM}"
     ;;
   local)
-    VERSION="0.0.0.local${BUILD_NUM}"
+    VERSION="0.0.0.post${BUILD_NUM}"
     ;;
 esac
 
 echo "Building package version: $VERSION"
+
+# Update version in pyproject.toml
+sed -i '' "s/version = \".*\"/version = \"$VERSION\"/" pyproject.toml
 
 # Update version in __init__.py
 INIT_FILE="src/circleci_sign_publish_example/__init__.py"

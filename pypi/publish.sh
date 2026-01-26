@@ -11,7 +11,7 @@
 #   PYPI_ENV          - either "staging", "production", or "local" (required)
 #   TWINE_USERNAME    - PyPI username (usually "__token__")
 #   TWINE_PASSWORD    - PyPI API token (required, will not be echoed)
-#   LOCAL_PYPI_URL    - Local PyPI repository URL (used when PYPI_ENV=local, defaults to http://localhost)
+#   LOCAL_PYPI_URL    - Local PyPI repository URL (used when PYPI_ENV=local, defaults to http://localhost/legacy/)
 
 set -e
 
@@ -26,15 +26,10 @@ if [ "$PYPI_ENV" != "staging" ] && [ "$PYPI_ENV" != "production" ] && [ "$PYPI_E
   exit 1
 fi
 
-# Validate credentials
-if [ -z "$TWINE_USERNAME" ]; then
-  echo "Error: TWINE_USERNAME not set" >&2
-  exit 1
-fi
-
-if [ -z "$TWINE_PASSWORD" ]; then
-  echo "Error: TWINE_PASSWORD not set" >&2
-  exit 1
+# Validate credentials (optional if using .pypirc)
+CREDENTIALS_PROVIDED=false
+if [ -n "$TWINE_USERNAME" ] && [ -n "$TWINE_PASSWORD" ]; then
+  CREDENTIALS_PROVIDED=true
 fi
 
 # Determine repository URL
@@ -48,7 +43,7 @@ case "$PYPI_ENV" in
     REPO_NAME="PyPI"
     ;;
   local)
-    REPO_URL="${LOCAL_PYPI_URL:-http://localhost}"
+    REPO_URL="${LOCAL_PYPI_URL:-http://localhost/legacy/}"
     REPO_NAME="Local PyPI"
     ;;
 esac
@@ -59,11 +54,24 @@ echo "Publishing to $REPO_NAME ($PYPI_ENV)..."
 set +x
 
 # Upload distributions
-python -m twine upload \
-  --repository-url "$REPO_URL" \
-  --username "$TWINE_USERNAME" \
-  --password "$TWINE_PASSWORD" \
-  dist/*
+if [ "$CREDENTIALS_PROVIDED" = true ]; then
+  python -m twine upload \
+    --repository-url "$REPO_URL" \
+    --username "$TWINE_USERNAME" \
+    --password "$TWINE_PASSWORD" \
+    dist/*
+else
+  # Use .pypirc credentials (specify repository name for local, URL for others)
+  if [ "$PYPI_ENV" = "local" ]; then
+    python -m twine upload \
+      --repository local \
+      dist/*
+  else
+    python -m twine upload \
+      --repository-url "$REPO_URL" \
+      dist/*
+  fi
+fi
 
 set -x
 

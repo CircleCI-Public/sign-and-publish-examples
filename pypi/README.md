@@ -45,7 +45,7 @@ export TWINE_PASSWORD="<your-test-pypi-token>"
 export PYPI_ENV=local
 export TWINE_USERNAME="<your-local-username>"
 export TWINE_PASSWORD="<your-local-password>"
-export LOCAL_PYPI_URL="http://localhost:8080"  # optional, defaults to http://localhost:8080
+export LOCAL_PYPI_URL="http://localhost"  # optional, defaults to http://localhost
 ./publish.sh
 ```
 

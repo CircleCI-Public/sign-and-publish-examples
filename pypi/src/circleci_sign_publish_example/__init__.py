@@ -1,6 +1,6 @@
 """CircleCI PyPI Publishing Example"""
 
-__version__ = "0.0.0.local0"
+__version__ = "0.0.0.post4"
 
 
 def hello() -> str:

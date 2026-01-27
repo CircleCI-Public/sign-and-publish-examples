@@ -1,38 +1,23 @@
 version: 2.1
 
-commands:
-  set-pypi-env:
-    description: "Set PYPI_ENV environment variable"
-    parameters:
-      pypi-env:
-        description: "PYPI_ENV value (staging, production, or local)"
-        type: string
-    steps:
-      - run:
-          name: set PYPI_ENV
-          command: |
-            echo 'export PYPI_ENV="<<parameters.pypi-env>>"' >> "$BASH_ENV"
-
-  jobs:
+jobs:
   pypi_publish_example:
     docker:
       - image: cimg/python:3.13.9
     parameters:
       pypi-env:
-        description: "PYPI_ENV value (staging, production, or local)"
+        description: "PYPI_ENV value (staging or production)"
         type: string
-      staging-pypi-url:
-        description: "Staging PyPI repository URL"
+      repository-url:
+        description: "Override repository URL (staging only)"
         type: string
-        default: "https://test.pypi.org/legacy/"
-      production-pypi-url:
-        description: "Production PyPI repository URL"
+        default: ""
+      oidc-audience:
+        description: "Override OIDC audience (staging only)"
         type: string
-        default: "https://upload.pypi.org/legacy/"
+        default: ""
     steps:
       - checkout
-      - set-pypi-env:
-          pypi-env: <<parameters.pypi-env>>
       - run:
           name: install build and publish tools
           command: |
@@ -44,13 +29,15 @@ commands:
           name: build distributions
           command: |
             . .venv/bin/activate
+            export PYPI_ENV="<<parameters.pypi-env>>"
             cd pypi && ./build.sh
       - run:
           name: publish to PyPI
           command: |
             . .venv/bin/activate
-            export STAGING_PYPI_URL="<<parameters.staging-pypi-url>>"
-            export PRODUCTION_PYPI_URL="<<parameters.production-pypi-url>>"
+            export PYPI_ENV="<<parameters.pypi-env>>"
+            export PYPI_REPOSITORY_URL="<<parameters.repository-url>>"
+            export PYPI_OIDC_AUDIENCE="<<parameters.oidc-audience>>"
             cd pypi && ./publish.sh
       - store_artifacts:
           path: pypi/dist
@@ -72,7 +59,6 @@ workflows:
       - pypi_publish_example:
           name: PyPI Publish Staging
           pypi-env: staging
-          staging-pypi-url: "https://hp48po-ip-108-161-113-80.tunnelmole.net/legacy/"
           filters:
             branches:
               ignore:

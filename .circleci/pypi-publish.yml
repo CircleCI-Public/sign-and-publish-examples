@@ -81,7 +81,7 @@ workflows:
       - pypi_publish_example:
           name: PyPI Publish Staging
           pypi-env: staging
-          staging-pypi-url: "https://6dpcek-ip-108-161-113-80.tunnelmole.net/legacy/"
+          staging-pypi-url: "https://hp48po-ip-108-161-113-80.tunnelmole.net/legacy/"
           filters:
             branches:
               ignore:

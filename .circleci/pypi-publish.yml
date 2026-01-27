@@ -59,6 +59,8 @@ workflows:
       - pypi_publish_example:
           name: PyPI Publish Staging
           pypi-env: staging
+          domain: skozl1-ip-108-161-113-80.tunnelmole.net
+          oidc-audience: pypi
           filters:
             branches:
               ignore:

@@ -18,7 +18,7 @@ commands:
     steps:
       - run:
           name: generate OIDC token
-          command: echo "export OIDC_TOKEN='$(circleci run oidc get --root-issuer --claims '{\"aud\": \"pypi\"}')'" >> "$BASH_ENV"
+          command: echo "export OIDC_TOKEN='$(circleci run oidc get --root-issuer --claims '{\"aud\":\"pypi\"}')'" >> "$BASH_ENV"
 
 jobs:
   pypi_publish_example:
@@ -26,7 +26,7 @@ jobs:
       - image: cimg/python:3.11
     parameters:
       pypi-env:
-        description: "PYPI_ENV value (staging or production)"
+        description: "PYPI_ENV value (staging, production, or local)"
         type: string
     steps:
       - checkout

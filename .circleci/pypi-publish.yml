@@ -18,7 +18,8 @@ commands:
     steps:
       - run:
           name: generate OIDC token
-          command: echo "export OIDC_TOKEN='$(circleci run oidc get --root-issuer --claims '{\"aud\":\"pypi\"}')'" >> "$BASH_ENV"
+          command: |
+            echo "export OIDC_TOKEN='$(circleci run oidc get --root-issuer --claims '{"aud":"pypi"}')'" >> "$BASH_ENV"
 
 jobs:
   pypi_publish_example:

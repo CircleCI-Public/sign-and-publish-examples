@@ -39,12 +39,12 @@ esac
 
 echo "Building package version: $VERSION"
 
-# Update version in pyproject.toml
-sed -i '' "s/version = \".*\"/version = \"$VERSION\"/" pyproject.toml
+# Update version in pyproject.toml (portable sed for macOS and Linux)
+sed -i.bak "s/version = \".*\"/version = \"$VERSION\"/" pyproject.toml && rm -f pyproject.toml.bak
 
 # Update version in __init__.py
 INIT_FILE="src/circleci_sign_publish_example/__init__.py"
-sed -i '' "s/__version__ = \".*\"/__version__ = \"$VERSION\"/" "$INIT_FILE"
+sed -i.bak "s/__version__ = \".*\"/__version__ = \"$VERSION\"/" "$INIT_FILE" && rm -f "${INIT_FILE}.bak"
 
 # Install uv if needed and build
 echo "Building distributions with uv..."

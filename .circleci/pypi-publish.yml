@@ -13,15 +13,7 @@ commands:
           command: |
             echo 'export PYPI_ENV="<<parameters.pypi-env>>"' >> "$BASH_ENV"
 
-  generate-oidc-token:
-    description: "Generate OIDC token for PyPI Trusted Publishing"
-    steps:
-      - run:
-          name: generate OIDC token
-          command: |
-            echo "export OIDC_TOKEN='$(circleci run oidc get --root-issuer --claims '{"aud":"pypi"}')'" >> "$BASH_ENV"
-
-jobs:
+  jobs:
   pypi_publish_example:
     docker:
       - image: cimg/python:3.13.9
@@ -41,7 +33,6 @@ jobs:
       - checkout
       - set-pypi-env:
           pypi-env: <<parameters.pypi-env>>
-      - generate-oidc-token
       - run:
           name: install build and publish tools
           command: |

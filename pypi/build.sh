@@ -27,10 +27,10 @@ BUILD_NUM="${CIRCLE_BUILD_NUM:-0}"
 
 case "$PYPI_ENV" in
   staging)
-    VERSION="0.0.0.dev${BUILD_NUM}"
+    VERSION="0.0.1.dev${BUILD_NUM}"
     ;;
   production)
-    VERSION="0.0.0.post${BUILD_NUM}"
+    VERSION="0.0.1.post${BUILD_NUM}"
     ;;
 esac
 

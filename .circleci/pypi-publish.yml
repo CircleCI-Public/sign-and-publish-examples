@@ -28,6 +28,14 @@ jobs:
       pypi-env:
         description: "PYPI_ENV value (staging, production, or local)"
         type: string
+      staging-pypi-url:
+        description: "Staging PyPI repository URL"
+        type: string
+        default: "https://test.pypi.org/legacy/"
+      production-pypi-url:
+        description: "Production PyPI repository URL"
+        type: string
+        default: "https://upload.pypi.org/legacy/"
     steps:
       - checkout
       - set-pypi-env:
@@ -40,6 +48,8 @@ jobs:
       - run:
           name: publish to PyPI
           command: |
+            export STAGING_PYPI_URL="<<parameters.staging-pypi-url>>"
+            export PRODUCTION_PYPI_URL="<<parameters.production-pypi-url>>"
             cd pypi && ./publish.sh
       - store_artifacts:
           path: pypi/dist

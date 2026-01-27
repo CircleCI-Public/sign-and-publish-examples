@@ -13,11 +13,13 @@
 #   ./publish.sh
 #
 # Environment variables:
-#   PYPI_ENV          - either "staging", "production", or "local" (required)
-#   OIDC_TOKEN        - OIDC token for Trusted Publishing (recommended for CI)
-#   TWINE_USERNAME    - PyPI username (usually "__token__", fallback if OIDC_TOKEN not set)
-#   TWINE_PASSWORD    - PyPI API token (fallback if OIDC_TOKEN not set)
-#   LOCAL_PYPI_URL    - PyPI repository URL (used when PYPI_ENV=local, defaults to http://localhost/legacy/)
+#   PYPI_ENV              - either "staging", "production", or "local" (required)
+#   OIDC_TOKEN            - OIDC token for Trusted Publishing (recommended for CI)
+#   TWINE_USERNAME        - PyPI username (usually "__token__", fallback if OIDC_TOKEN not set)
+#   TWINE_PASSWORD        - PyPI API token (fallback if OIDC_TOKEN not set)
+#   STAGING_PYPI_URL      - Staging repository URL (defaults to https://test.pypi.org/legacy/)
+#   PRODUCTION_PYPI_URL   - Production repository URL (defaults to https://upload.pypi.org/legacy/)
+#   LOCAL_PYPI_URL        - Local repository URL (defaults to http://localhost/legacy/)
 
 set -e
 
@@ -42,14 +44,14 @@ elif [ -n "$TWINE_USERNAME" ] && [ -n "$TWINE_PASSWORD" ]; then
   USE_API_TOKEN=true
 fi
 
-# Determine repository URL
+# Determine repository URL (can be overridden via env vars)
 case "$PYPI_ENV" in
   staging)
-    REPO_URL="https://test.pypi.org/legacy/"
+    REPO_URL="${STAGING_PYPI_URL:-https://test.pypi.org/legacy/}"
     REPO_NAME="TestPyPI"
     ;;
   production)
-    REPO_URL="https://upload.pypi.org/legacy/"
+    REPO_URL="${PRODUCTION_PYPI_URL:-https://upload.pypi.org/legacy/}"
     REPO_NAME="PyPI"
     ;;
   local)

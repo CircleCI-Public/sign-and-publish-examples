@@ -24,7 +24,7 @@ commands:
 jobs:
   pypi_publish_example:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.13.9
     parameters:
       pypi-env:
         description: "PYPI_ENV value (staging, production, or local)"
@@ -43,12 +43,21 @@ jobs:
           pypi-env: <<parameters.pypi-env>>
       - generate-oidc-token
       - run:
+          name: install build and publish tools
+          command: |
+            python -m venv .venv
+            . .venv/bin/activate
+            python -m pip install --upgrade pip
+            python -m pip install "uv_build>=0.9.21,<0.10.0" twine
+      - run:
           name: build distributions
           command: |
+            . .venv/bin/activate
             cd pypi && ./build.sh
       - run:
           name: publish to PyPI
           command: |
+            . .venv/bin/activate
             export STAGING_PYPI_URL="<<parameters.staging-pypi-url>>"
             export PRODUCTION_PYPI_URL="<<parameters.production-pypi-url>>"
             cd pypi && ./publish.sh

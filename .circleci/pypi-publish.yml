@@ -12,7 +12,6 @@ commands:
           name: set PYPI_ENV
           command: |
             echo 'export PYPI_ENV="<<parameters.pypi-env>>"' >> "$BASH_ENV"
-            source "$BASH_ENV"
 
   generate-oidc-token:
     description: "Generate OIDC token for PyPI Trusted Publishing"
@@ -22,7 +21,6 @@ commands:
           command: |
             OIDC_TOKEN=$(circleci run oidc get --root-issuer --claims '{"aud": "pypi"}')
             echo 'export OIDC_TOKEN="'"$OIDC_TOKEN"'"' >> "$BASH_ENV"
-            source "$BASH_ENV"
 
 jobs:
   pypi_publish_example:

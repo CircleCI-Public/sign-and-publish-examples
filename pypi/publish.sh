@@ -13,7 +13,7 @@
 #
 # Environment variables:
 #   PYPI_ENV              - "staging" (TestPyPI) or "production" (PyPI)
-#   PYPI_REPOSITORY_URL   - Override repository URL (staging only)
+#   PYPI_DOMAIN           - Override repository domain (staging only, e.g. "test.pypi.org")
 #   PYPI_OIDC_AUDIENCE    - Override OIDC audience (staging only)
 #   TWINE_USERNAME        - PyPI username (fallback if OIDC unavailable)
 #   TWINE_PASSWORD        - PyPI API token (fallback if OIDC unavailable)
@@ -31,22 +31,21 @@ if [ "$PYPI_ENV" != "staging" ] && [ "$PYPI_ENV" != "production" ]; then
   exit 1
 fi
 
-# Determine repository URLs and OIDC settings based on environment
+# Determine repository domain and OIDC settings based on environment
 case "$PYPI_ENV" in
   staging)
-    REPO_URL="${PYPI_REPOSITORY_URL:-https://test.pypi.org/legacy/}"
+    REPO_DOMAIN="${PYPI_DOMAIN:-test.pypi.org}"
     OIDC_AUDIENCE="${PYPI_OIDC_AUDIENCE:-testpypi}"
     REPO_NAME="TestPyPI"
     ;;
   production)
-    REPO_URL="https://upload.pypi.org/legacy/"
+    REPO_DOMAIN="pypi.org"
     OIDC_AUDIENCE="pypi"
     REPO_NAME="PyPI"
     ;;
 esac
 
-# Extract domain from repository URL for OIDC token exchange
-REPO_DOMAIN=$(echo "$REPO_URL" | sed -E 's|https?://([^/]+).*|\1|')
+REPO_URL="https://${REPO_DOMAIN}/legacy/"
 
 # Function to exchange OIDC token for PyPI API token
 exchange_oidc_token() {

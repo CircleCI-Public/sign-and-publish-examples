@@ -8,8 +8,8 @@ jobs:
       pypi-env:
         description: "PYPI_ENV value (staging or production)"
         type: string
-      repository-url:
-        description: "Override repository URL (staging only)"
+      domain:
+        description: "Override repository domain (staging only)"
         type: string
         default: ""
       oidc-audience:
@@ -36,7 +36,7 @@ jobs:
           command: |
             . .venv/bin/activate
             export PYPI_ENV="<<parameters.pypi-env>>"
-            export PYPI_REPOSITORY_URL="<<parameters.repository-url>>"
+            export PYPI_DOMAIN="<<parameters.domain>>"
             export PYPI_OIDC_AUDIENCE="<<parameters.oidc-audience>>"
             cd pypi && ./publish.sh
       - store_artifacts:

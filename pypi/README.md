@@ -32,7 +32,24 @@ python -c "import circleci_sign_publish_example; print(circleci_sign_publish_exa
 
 ### Publish (Locally)
 
-**To TestPyPI (staging):**
+#### Using OIDC Token (Recommended for CI)
+
+```bash
+export PYPI_ENV=staging  # or production, or local
+export OIDC_TOKEN="$(circleci run oidc get --root-issuer --claims '{\"aud\": \"pypi\"}')"
+./publish.sh
+```
+
+For local instances with custom URLs:
+```bash
+export PYPI_ENV=local
+export OIDC_TOKEN="$(circleci run oidc get --root-issuer --claims '{\"aud\": \"pypi\"}')"
+export LOCAL_PYPI_URL="https://your-local-instance.com/legacy/"
+./publish.sh
+```
+
+#### Using API Token (Legacy)
+
 ```bash
 export PYPI_ENV=staging
 export TWINE_USERNAME="__token__"
@@ -40,16 +57,20 @@ export TWINE_PASSWORD="<your-test-pypi-token>"
 ./publish.sh
 ```
 
-**To Local PyPI instance:**
+For local instances:
 ```bash
 export PYPI_ENV=local
 export TWINE_USERNAME="<your-local-username>"
 export TWINE_PASSWORD="<your-local-password>"
-export LOCAL_PYPI_URL="http://localhost/legacy/"  # optional, defaults to http://localhost/legacy/
+export LOCAL_PYPI_URL="http://localhost/legacy/"
 ./publish.sh
 ```
 
-**Note:** Publishing requires valid credentials. For testing against a local instance, ensure your PyPI server is running and accessible.
+#### Using `.pypirc` Configuration
+
+If credentials are stored in `~/.pypirc`, simply set `PYPI_ENV` and the script will use configured credentials.
+
+**Note:** Publishing requires valid credentials or OIDC token. For local instances, ensure your PyPI server is running and accessible.
 
 ## CircleCI Workflow
 

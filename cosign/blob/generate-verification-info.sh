@@ -66,6 +66,13 @@ if [ -n "$cert_base64" ]; then
 
     # Runner Environment (OID 1.3.6.1.4.1.57264.1.11)
     runner_env=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.11:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
+
+    # OIDC Issuer V2 (OID 1.3.6.1.4.1.57264.1.8) - preferred
+    # Falls back to deprecated V1 (OID 1.3.6.1.4.1.57264.1.1)
+    oidc_issuer=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.8:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^h]*//' || true)
+    if [ -z "$oidc_issuer" ]; then
+      oidc_issuer=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.1:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^h]*//' || true)
+    fi
   fi
 fi
 
@@ -82,7 +89,6 @@ else
   rekor_search_url=""
 fi
 
-oidc_issuer="https://oidc.circleci.com"
 certificate_identity="https://circleci.com/api/v2/projects/${CIRCLE_PROJECT_ID}/pipeline-definitions/${PIPELINE_DEFINITION_ID}"
 
 # Generate verification info JSON using jq for proper escaping

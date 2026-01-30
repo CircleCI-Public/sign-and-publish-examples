@@ -50,20 +50,20 @@ cert_base64=$(jq -r '.verificationMaterial.certificate.rawBytes // ""' "$bundle"
 if [ -n "$cert_base64" ]; then
   # Extract certificate extensions using openssl
   cert_text=$(echo "$cert_base64" | base64 -d | openssl x509 -inform DER -text -noout 2>/dev/null || true)
-  
+
   if [ -n "$cert_text" ]; then
     # Extract OID values - they have DER encoding prefixes we need to strip
     # The format is: "1.3.6.1.4.1.57264.1.X:\n                <prefix><value>"
-    
+
     # Source Repository URI (OID 1.3.6.1.4.1.57264.1.12) - contains vcs-origin
     source_repo_uri=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.12:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
-    
+
     # Source Repository Ref (OID 1.3.6.1.4.1.57264.1.14) - contains vcs-ref (branch/tag)
     source_repo_ref=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.14:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
-    
+
     # Build Signer URI (OID 1.3.6.1.4.1.57264.1.9)
     build_signer_uri=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.9:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^h]*//' || true)
-    
+
     # Runner Environment (OID 1.3.6.1.4.1.57264.1.11)
     runner_env=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.11:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
   fi
@@ -82,7 +82,7 @@ else
   rekor_search_url=""
 fi
 
-oidc_issuer="https://oidc.circleci.com/org/${CIRCLE_ORGANIZATION_ID}"
+oidc_issuer="https://oidc.circleci.com"
 certificate_identity="https://circleci.com/api/v2/projects/${CIRCLE_PROJECT_ID}/pipeline-definitions/${PIPELINE_DEFINITION_ID}"
 
 # Generate verification info JSON using jq for proper escaping

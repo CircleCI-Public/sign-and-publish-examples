@@ -46,12 +46,8 @@ echo "  Source repository: ${source_repo_uri:-"(not set)"}"
 echo "  Source ref: ${source_repo_ref:-"(not set)"}"
 
 # Policy 1: Validate OIDC issuer matches expected CircleCI issuer
-if [ -z "$certificate_oidc_issuer" ]; then
-    echo ""
-    echo "❌ POLICY VIOLATION: Missing OIDC issuer"
-    exit 1
-fi
-
+# Because we are using this script to validate both root-issuer AND
+# org issuer we just do wildcard to ensure it starts with
 if [[ "$certificate_oidc_issuer" != https://oidc.circleci.com* ]]; then
     echo ""
     echo "❌ POLICY VIOLATION: Invalid OIDC issuer: $certificate_oidc_issuer"

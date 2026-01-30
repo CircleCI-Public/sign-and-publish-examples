@@ -56,5 +56,5 @@ fi
 cosign verify-blob "${artifact}" \
   --bundle "${bundle}" \
   --rekor-url "$REKOR_URL" \
-  --certificate-oidc-issuer "https://oidc.circleci.com/org/${CIRCLE_ORGANIZATION_ID}" \
+  --certificate-oidc-issuer "https://oidc.circleci.com" \
   --certificate-identity "https://circleci.com/api/v2/projects/${CIRCLE_PROJECT_ID}/pipeline-definitions/${PIPELINE_DEFINITION_ID}"

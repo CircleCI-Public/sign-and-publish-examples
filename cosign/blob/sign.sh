@@ -41,7 +41,7 @@ else
   REKOR_URL="https://rekor.sigstore.dev"
 fi
 
-export SIGSTORE_ID_TOKEN=$(circleci run oidc get --claims '{"aud": "sigstore"}')
+export SIGSTORE_ID_TOKEN=$(circleci run oidc get --claims '{"aud": "sigstore"}' --root-issuer)
 
 # Initialize TUF root if using staging
 if [ -n "$TUF_MIRROR" ]; then
@@ -51,7 +51,7 @@ fi
 cosign sign-blob "${artifact}" \
   --fulcio-url "$FULCIO_URL" \
   --rekor-url "$REKOR_URL" \
-  --oidc-issuer "https://oidc.circleci.com/org/${CIRCLE_ORGANIZATION_ID}" \
+  --oidc-issuer "https://oidc.circleci.com" \
   --yes \
   --bundle "${artifact}.bundle" \
   --use-signing-config=false

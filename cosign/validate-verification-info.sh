@@ -32,16 +32,30 @@ fi
 
 echo "Validating policies for: $verification_json"
 
+# Extract verification fields
+certificate_oidc_issuer=$(jq -r '.verification.certificate_oidc_issuer // ""' "$verification_json")
+
 # Extract provenance fields
 runner_environment=$(jq -r '.provenance.runner_environment // ""' "$verification_json")
 source_repo_uri=$(jq -r '.provenance.source_repository_uri // ""' "$verification_json")
 source_repo_ref=$(jq -r '.provenance.source_repository_ref // ""' "$verification_json")
 
+echo "  OIDC Issuer: ${certificate_oidc_issuer:-"(not set)"}"
 echo "  Runner environment: ${runner_environment:-"(not set)"}"
 echo "  Source repository: ${source_repo_uri:-"(not set)"}"
 echo "  Source ref: ${source_repo_ref:-"(not set)"}"
 
-# Policy 1: Reject SSH debug session builds
+# Policy 1: Validate OIDC issuer matches expected CircleCI issuer
+# Because we are using this script to validate both root-issuer AND
+# org issuer we just do wildcard to ensure it starts with
+if [[ "$certificate_oidc_issuer" != https://oidc.circleci.com* ]]; then
+    echo ""
+    echo "❌ POLICY VIOLATION: Invalid OIDC issuer: $certificate_oidc_issuer"
+    echo "   Expected issuer to start with: https://oidc.circleci.com"
+    exit 1
+fi
+
+# Policy 2: Reject SSH debug session builds
 if [ "$runner_environment" = "ssh-rerun" ]; then
     echo ""
     echo "❌ POLICY VIOLATION: Artifact was signed during an SSH debug session"

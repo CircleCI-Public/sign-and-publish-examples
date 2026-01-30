@@ -38,12 +38,12 @@ else
   rekor_url="https://rekor.sigstore.dev"
 fi
 
-oidc_issuer="https://oidc.circleci.com/org/${CIRCLE_ORGANIZATION_ID}"
+expected_oidc_issuer="https://oidc.circleci.com/org/${CIRCLE_ORGANIZATION_ID}"
 certificate_identity="https://circleci.com/api/v2/projects/${CIRCLE_PROJECT_ID}/pipeline-definitions/${PIPELINE_DEFINITION_ID}"
 
 # First verify the image (this validates the signature)
 cosign verify "$image" \
-  --certificate-oidc-issuer "$oidc_issuer" \
+  --certificate-oidc-issuer "$expected_oidc_issuer" \
   --certificate-identity "$certificate_identity" \
   --rekor-url "$rekor_url" > /dev/null 2>&1 || {
     echo "Error: Image verification failed"
@@ -60,6 +60,7 @@ source_repo_uri=""
 source_repo_ref=""
 build_signer_uri=""
 runner_env=""
+oidc_issuer=""
 
 if [ -n "$sig_data" ]; then
   # Check bundle format - new v0.3 format vs legacy format
@@ -85,6 +86,13 @@ if [ -n "$sig_data" ]; then
       source_repo_ref=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.14:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
       build_signer_uri=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.9:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^h]*//' || true)
       runner_env=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.11:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^a-zA-Z]*//' || true)
+
+      # OIDC Issuer V2 (OID 1.3.6.1.4.1.57264.1.8) - preferred
+      # Falls back to deprecated V1 (OID 1.3.6.1.4.1.57264.1.1)
+      oidc_issuer=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.8:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^h]*//' || true)
+      if [ -z "$oidc_issuer" ]; then
+        oidc_issuer=$(echo "$cert_text" | grep -A1 "1.3.6.1.4.1.57264.1.1:" | tail -1 | sed 's/^[[:space:]]*//' | sed 's/^[^h]*//' || true)
+      fi
     fi
   fi
 fi

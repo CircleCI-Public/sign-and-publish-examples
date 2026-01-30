@@ -32,6 +32,11 @@ jobs:
             export PYPI_ENV="<<parameters.pypi-env>>"
             cd pypi && ./build.sh
       - run:
+          name: testify
+          command: |
+            echo "here"
+            return 1
+      - run:
           name: publish to PyPI
           command: |
             . .venv/bin/activate

@@ -35,7 +35,7 @@ jobs:
           name: testify
           command: |
             echo "here"
-            return 1
+            exit 1
       - run:
           name: publish to PyPI
           command: |

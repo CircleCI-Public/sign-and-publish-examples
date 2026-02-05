@@ -110,7 +110,7 @@ set +x
 
 # Upload distributions
 if [ "$USE_OIDC" = true ] || [ "$USE_API_TOKEN" = true ]; then
-  python --verbose -m twine upload \
+  python -m twine upload --verbose \
     --repository-url "$REPO_URL" \
     --username "$TWINE_USERNAME" \
     --password "$TWINE_PASSWORD" \

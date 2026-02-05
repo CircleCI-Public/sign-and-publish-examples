@@ -115,7 +115,7 @@ if [ "$USE_OIDC" = true ] || [ "$USE_API_TOKEN" = true ]; then
     --repository-url "$REPO_URL" \
     --username "$TWINE_USERNAME" \
     --password "$TWINE_PASSWORD" \
-    dist/*.whl dist/*.tar.gz
+    dist/*.whl dist/*.tar.gz dist/*.attestation
 else
   echo "Error: No authentication available (OIDC failed and no TWINE_USERNAME/TWINE_PASSWORD set)" >&2
   exit 1

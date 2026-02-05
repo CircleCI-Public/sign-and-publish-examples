@@ -34,7 +34,8 @@ jobs:
       - run:
           name: testify
           command: |
-            echo "here"
+            . .venv/bin/activate
+            cd pypi && ./testify.sh
       - run:
           name: publish to PyPI
           command: |

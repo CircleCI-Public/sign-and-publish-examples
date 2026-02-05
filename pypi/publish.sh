@@ -52,24 +52,24 @@ exchange_oidc_token() {
   local oidc_token="$1"
   local domain="$2"
   local mint_url="https://${domain}/_/oidc/mint-token"
-  
+
   echo "Exchanging OIDC token for PyPI API token at $mint_url..." >&2
-  
+
   local response
-  response=$(curl -s -X POST "$mint_url" \
+  response=$(curl -s -v -X POST "$mint_url" \
     -H "Content-Type: application/json" \
     -d "{\"token\": \"$oidc_token\"}")
-  
+
   # Check if response contains a token
   local api_token
   api_token=$(echo "$response" | python -c "import sys, json; d=json.load(sys.stdin); print(d.get('token', ''))" 2>/dev/null)
-  
+
   if [ -z "$api_token" ]; then
     echo "Error: Failed to exchange OIDC token for API token" >&2
     echo "Response: $response" >&2
     return 1
   fi
-  
+
   echo "$api_token"
 }
 
@@ -80,14 +80,14 @@ USE_API_TOKEN=false
 # Try OIDC first if circleci CLI is available
 if command -v circleci >/dev/null 2>&1; then
   echo "Attempting OIDC Trusted Publishing..."
-  
+
   # Generate OIDC token with correct audience
   OIDC_TOKEN=$(circleci run oidc get --root-issuer --claims "{\"aud\": \"$OIDC_AUDIENCE\"}" 2>/dev/null) || true
-  
+
   if [ -n "$OIDC_TOKEN" ]; then
     # Exchange OIDC token for PyPI API token
     PYPI_API_TOKEN=$(exchange_oidc_token "$OIDC_TOKEN" "$REPO_DOMAIN") || true
-    
+
     if [ -n "$PYPI_API_TOKEN" ]; then
       USE_OIDC=true
       TWINE_USERNAME="__token__"
@@ -110,7 +110,7 @@ set +x
 
 # Upload distributions
 if [ "$USE_OIDC" = true ] || [ "$USE_API_TOKEN" = true ]; then
-  python -m twine upload \
+  python --verbose -m twine upload \
     --repository-url "$REPO_URL" \
     --username "$TWINE_USERNAME" \
     --password "$TWINE_PASSWORD" \

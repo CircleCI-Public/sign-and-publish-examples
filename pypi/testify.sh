@@ -24,7 +24,21 @@ pip install id==1.6.0
 pip install "pypi-attestations @ https://github.com/meeech/pypi-attestations/archive/refs/heads/add-circleci-to-pypi-attestations.zip"
 
 echo "Signing distributions..."
-pypi-attestations sign dist/*
+pypi-attestations sign dist/*.whl dist/*.tar.gz
 
-echo "Attestation complete. Bundles:"
-ls -1 dist/*.attestation
+echo "Attestation bundles:"
+ls -1 dist/*.publish.attestation
+
+echo "Verifying attestations..."
+for dist_file in dist/*.whl dist/*.tar.gz; do
+  attestation_file="${dist_file}.publish.attestation"
+  if [ -f "$attestation_file" ]; then
+    echo "Inspecting attestation for $(basename "$dist_file")..."
+    pypi-attestations inspect "$attestation_file"
+  else
+    echo "Error: missing attestation for $(basename "$dist_file")" >&2
+    exit 1
+  fi
+done
+
+echo "Attestation signing and inspection complete."

@@ -35,7 +35,6 @@ jobs:
           name: testify
           command: |
             echo "here"
-            exit 1
       - run:
           name: publish to PyPI
           command: |
@@ -62,9 +61,12 @@ workflows:
   pypi_publish_staging:
     jobs:
       - pypi_publish_example:
+          context:
+            - trusted-publishing-test-context-1
+            - trusted-publishing-test-context-2
           name: PyPI Publish Staging
           pypi-env: staging
-          domain: skozl1-ip-108-161-113-80.tunnelmole.net
+          domain: 1wlp0v-ip-45-61-15-138.tunnelmole.net
           oidc-audience: pypi
           filters:
             branches:

@@ -173,7 +173,7 @@ workflows:
     jobs:
       - container_sign_example:
           name: Container Sign Workflow Production
-          sigstore-env: staging
+          sigstore-env: production
           filters:
             branches:
               only:

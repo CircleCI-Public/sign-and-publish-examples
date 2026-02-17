@@ -2,8 +2,6 @@ name: Publish to JSR
 
 on:
   push:
-    branches:
-      - main
     paths:
       - "jsr/**"
 
@@ -27,5 +25,22 @@ jobs:
         working-directory: jsr
       - run: pnpm build
         working-directory: jsr
+
+      - name: Set dev version for non-main branches
+        if: github.ref != 'refs/heads/main'
+        working-directory: jsr
+        run: |
+          BASE_VERSION=$(node -p "require('./package.json').version")
+          DEV_VERSION="${BASE_VERSION}-dev.${GITHUB_SHA::7}"
+          echo "Publishing dev version: ${DEV_VERSION}"
+          node -e "
+            const fs = require('fs');
+            for (const file of ['package.json', 'jsr.json']) {
+              const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+              pkg.version = '${DEV_VERSION}';
+              fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
+            }
+          "
+
       - run: pnpm dlx jsr publish
         working-directory: jsr

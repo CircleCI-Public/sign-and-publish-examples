@@ -8,5 +8,5 @@
  * ```
  */
 export function hello(): string {
-  return "Hello from @circleci/sign-and-publish-example!";
+  return "Hello from @circleci/sign-and-publish-example.";
 }

@@ -1,0 +1,15 @@
+[build-system]
+requires = ["uv_build >= 0.9.21, <0.10.0"]
+build-backend = "uv_build"
+
+[project]
+name = "circleci-sign-publish-example"
+version = "0.0.0.post4"
+authors = [{name = "CircleCI", email = "hello@circleci.com"}]
+description = "A minimal example of publishing to PyPI from CircleCI"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+
+[project.urls]
+Repository = "https://github.com/CircleCI-Public/sign-and-publish-examples"

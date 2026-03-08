@@ -7,6 +7,8 @@ DIST_TAG="dev"
 
 echo "publish.sh starting on branch: ${BRANCH}"
 
+npm --version
+
 if [ "$BRANCH" = "main" ]; then
   DIST_TAG="latest"
 fi

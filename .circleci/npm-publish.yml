@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   npm_publish_example:
     docker:
-      - image: cimg/node:22.15
+      - image: cimg/node:25.8
     steps:
       - checkout
       - run:

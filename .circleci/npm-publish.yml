@@ -47,6 +47,7 @@ workflows:
       - npm_publish_example:
           context:
             - npm-trusted-publishing-secrets
+            - "test context tf5b7"
           name: NPM Publish Staging
           filters:
             branches:

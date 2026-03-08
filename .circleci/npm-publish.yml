@@ -1,0 +1,50 @@
+version: 2.1
+
+jobs:
+  npm_publish_example:
+    docker:
+      - image: cimg/node:22.15
+    steps:
+      - checkout
+      - run:
+          name: install dependencies
+          command: |
+            cd npm
+            npm ci
+      - run:
+          name: build package and set dynamic version
+          command: |
+            cd npm
+            ./build.sh
+      - run:
+          name: testify
+          command: |
+            cd npm
+            ./testify.sh
+      - run:
+          name: publish to npm
+          command: |
+            cd npm
+            ./publish.sh
+      - store_artifacts:
+          path: npm/dist
+          destination: npm-distributions
+
+workflows:
+  npm_publish_production:
+    jobs:
+      - npm_publish_example:
+          name: NPM Publish Production
+          filters:
+            branches:
+              only:
+                - main
+
+  npm_publish_staging:
+    jobs:
+      - npm_publish_example:
+          name: NPM Publish Staging
+          filters:
+            branches:
+              ignore:
+                - main

@@ -45,6 +45,8 @@ workflows:
   npm_publish_staging:
     jobs:
       - npm_publish_example:
+          context:
+            - npm-trusted-publishing-secrets
           name: NPM Publish Staging
           filters:
             branches:

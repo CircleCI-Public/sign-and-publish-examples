@@ -1,6 +1,6 @@
 {
   "name": "@meeech/cci-tp-testing",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Just a hello world package to publish with trusted publishing via cci",
   "homepage": "https://github.com/meeech/sign-and-publish-examples#readme",
   "bugs": {

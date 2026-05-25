@@ -4,52 +4,33 @@ jobs:
   npm_publish_example:
     docker:
       - image: cimg/node:25.8
+    working_directory: ~/project/npm
     steps:
-      - checkout
+      - checkout:
+          path: ~/project
       - run:
-          name: install dependencies
-          command: |
-            cd npm
-            npm ci
+          name: Install dependencies
+          command: npm ci
       - run:
-          name: build package and set dynamic version
-          command: |
-            cd npm
-            ./build.sh
+          name: Run tests
+          command: npm test
       - run:
-          name: testify
-          command: |
-            cd npm
-            ./testify.sh
+          name: Set dynamic version
+          command: npm run build
       - run:
-          name: publish to npm
+          name: Publish to npm
           command: |
-            cd npm
-            ./publish.sh
-      - store_artifacts:
-          path: npm/dist
-          destination: npm-distributions
+            export NPM_ID_TOKEN=$(circleci run oidc get --claims '{"aud": "npm:registry.npmjs.org"}')
+            npm publish --access public
 
 workflows:
   npm_publish_production:
     jobs:
       - npm_publish_example:
           context:
-            - npm-trusted-publishing-secrets
+            - trusted-publishing-guard
           name: NPM Publish Production
           filters:
             branches:
               only:
-                - main
-
-  npm_publish_staging:
-    jobs:
-      - npm_publish_example:
-          context:
-            - npm-trusted-publishing-secrets
-            - "test context tf5b7"
-          name: NPM Publish Staging
-          filters:
-            branches:
-              ignore:
                 - main

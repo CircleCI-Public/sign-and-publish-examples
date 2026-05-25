@@ -19,6 +19,7 @@
     "readme.md"
   ],
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "build": "./build.sh"
   }
 }

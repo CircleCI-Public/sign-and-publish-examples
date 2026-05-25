@@ -1,17 +1,17 @@
 {
-  "name": "@meeech/cci-tp-testing",
+  "name": "@circleci/trusted-publishing-example",
   "version": "1.0.1",
   "description": "Just a hello world package to publish with trusted publishing via cci",
-  "homepage": "https://github.com/meeech/sign-and-publish-examples#readme",
+  "homepage": "https://github.com/CircleCI-Public/sign-and-publish-examples#readme",
   "bugs": {
-    "url": "https://github.com/meeech/sign-and-publish-examples/issues"
+    "url": "https://github.com/CircleCI-Public/sign-and-publish-examples/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/meeech/sign-and-publish-examples.git"
+    "url": "git+https://github.com/CircleCI-Public/sign-and-publish-examples.git"
   },
   "license": "ISC",
-  "author": "mitch",
+  "author": "meeech",
   "type": "commonjs",
   "main": "index.js",
   "files": [

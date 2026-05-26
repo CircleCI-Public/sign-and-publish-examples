@@ -40,12 +40,12 @@ workflows:
   # branch, so any job on a non-main branch that tries to use the context
   # will be rejected with an Unauthorized status. That is the demo: the
   # context lockdown stops a stray branch from publishing.
-  npm_publish_staging:
+  npm_publish_not_main:
     jobs:
       - npm_publish_example:
           context:
             - trusted-publishing-guard
-          name: NPM Publish Staging
+          name: NPM Publish Not main
           filters:
             branches:
               ignore:

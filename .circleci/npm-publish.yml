@@ -1,0 +1,52 @@
+version: 2.1
+
+jobs:
+  npm_publish_example:
+    docker:
+      - image: cimg/node:24.16
+    working_directory: ~/project/npm
+    steps:
+      - checkout:
+          path: ~/project
+      - run:
+          name: Install dependencies
+          command: npm ci
+      - run:
+          name: Run tests
+          command: npm test
+      - run:
+          name: Set dynamic version
+          command: npm run build
+      - run:
+          name: Publish to npm
+          command: |
+            export NPM_ID_TOKEN=$(circleci run oidc get --claims '{"aud": "npm:registry.npmjs.org"}') 
+            npm publish --access public # or npm stage publish 
+
+workflows:
+  npm_publish_production:
+    jobs:
+      - npm_publish_example:
+          context:
+            - trusted-publishing-guard
+          name: NPM Publish Production
+          filters:
+            branches:
+              only:
+                - main
+
+  # This workflow is expected to FAIL. The trusted-publishing-guard context
+  # has an expression restriction that only allows it to run on the main
+  # branch, so any job on a non-main branch that tries to use the context
+  # will be rejected with an Unauthorized status. That is the demo: the
+  # context lockdown stops a stray branch from publishing.
+  npm_publish_staging:
+    jobs:
+      - npm_publish_example:
+          context:
+            - trusted-publishing-guard
+          name: NPM Publish Staging
+          filters:
+            branches:
+              ignore:
+                - main

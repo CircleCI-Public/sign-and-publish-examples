@@ -4,6 +4,7 @@ jobs:
   npm_publish_example:
     docker:
       - image: cimg/node:24.16
+    resource_class: cci-public/mitchell-amihod
     working_directory: ~/project/npm
     steps:
       - checkout:

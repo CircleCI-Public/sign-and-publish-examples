@@ -1,0 +1,47 @@
+name: Publish to JSR
+
+on:
+  push:
+    paths:
+      - "jsr/**"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: jsr/pnpm-lock.yaml
+      - run: pnpm install
+        working-directory: jsr
+      - run: pnpm build
+        working-directory: jsr
+
+      - name: Set dev version for non-main branches
+        if: github.ref != 'refs/heads/main'
+        working-directory: jsr
+        run: |
+          BASE_VERSION=$(node -p "require('./package.json').version")
+          DEV_VERSION="${BASE_VERSION}-dev.${GITHUB_SHA::7}"
+          echo "Publishing dev version: ${DEV_VERSION}"
+          node -e "
+            const fs = require('fs');
+            for (const file of ['package.json', 'jsr.json']) {
+              const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+              pkg.version = '${DEV_VERSION}';
+              fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
+            }
+          "
+
+      - name: Publish to JSR
+        working-directory: jsr
+        run: pnpm dlx jsr publish ${{ github.ref != 'refs/heads/main' && '--allow-dirty' || '' }}

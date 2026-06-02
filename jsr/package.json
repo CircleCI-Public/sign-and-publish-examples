@@ -1,0 +1,25 @@
+{
+  "name": "@circleci/sign-and-publish-example",
+  "version": "0.1.0",
+  "description": "Example package for demonstrating trusted publishing to JSR",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "publish:jsr": "pnpm dlx jsr publish"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  },
+  "keywords": [
+    "circleci",
+    "trusted-publishing",
+    "example"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CircleCI-Public/sign-and-publish-examples"
+  }
+}

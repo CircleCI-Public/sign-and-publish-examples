@@ -1,110 +1,23 @@
-# PyPI Publishing Example
+# circleci-sign-publish-example
 
-A minimal example of building and publishing a Python package to PyPI using CircleCI.
+A minimal example package showing how to publish to PyPI from CircleCI using [trusted publishing](https://docs.pypi.org/trusted-publishers/), with no long-lived API token.
 
-## Local Usage
+For the full walkthrough, see [Publish to PyPI](https://circleci.com/docs/deploy/deploy-to-pypi-registry/).
 
-### Prerequisites
+> This example publishes to [TestPyPI](https://test.pypi.org). To publish elsewhere, change `--repository` in `../.circleci/pypi-publish.yml`.
 
-You'll need `uv` installed. Install it from [astral.sh/uv](https://docs.astral.sh/uv/):
+## Project Structure
 
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
+- **`build.sh`** - Sets a dynamic version (`MAJOR.MINOR.<CIRCLE_BUILD_NUM>`) and builds the wheel and sdist
+- **`pyproject.toml`** - Package metadata, built with the `uv_build` backend
+- **`src/circleci_sign_publish_example/`** - The package's one function: `hello`
+- **`tests/`** - Tests, runnable with `PYTHONPATH=src python -m unittest discover -s tests`
+- **`../.circleci/pypi-publish.yml`** - CircleCI pipeline
 
-### Build
+## How It Works
 
-```bash
-cd pypi
-./build.sh
-```
+1. CircleCI runs the publish job on push to `main`.
+2. `twine upload` (6.1.0+) detects it is running on CircleCI and mints an OIDC token through the `id` library (`circleci run oidc get --root-issuer`).
+3. `twine` exchanges the OIDC token for a short-lived TestPyPI API token and uploads the distributions. No token is stored.
 
-This will:
-- Generate a unique version based on environment (`PYPI_ENV`)
-- Use `uv build` to create distributions (wheel and sdist) in `dist/`
-
-### Install and Test
-
-```bash
-pip install dist/circleci_sign_publish_example-*.whl
-python -c "import circleci_sign_publish_example; print(circleci_sign_publish_example.hello())"
-```
-
-### Publish (Locally)
-
-#### Using OIDC Token (Recommended for CI)
-
-```bash
-export PYPI_ENV=staging  # or production, or local
-export OIDC_TOKEN="$(circleci run oidc get --root-issuer --claims '{\"aud\": \"pypi\"}')"
-./publish.sh
-```
-
-For local instances with custom URLs:
-```bash
-export PYPI_ENV=local
-export OIDC_TOKEN="$(circleci run oidc get --root-issuer --claims '{\"aud\": \"pypi\"}')"
-export LOCAL_PYPI_URL="https://your-local-instance.com/legacy/"
-./publish.sh
-```
-
-#### Using API Token (Legacy)
-
-```bash
-export PYPI_ENV=staging
-export TWINE_USERNAME="__token__"
-export TWINE_PASSWORD="<your-test-pypi-token>"
-./publish.sh
-```
-
-For local instances:
-```bash
-export PYPI_ENV=local
-export TWINE_USERNAME="<your-local-username>"
-export TWINE_PASSWORD="<your-local-password>"
-export LOCAL_PYPI_URL="http://localhost/legacy/"
-./publish.sh
-```
-
-#### Using `.pypirc` Configuration
-
-If credentials are stored in `~/.pypirc`, simply set `PYPI_ENV` and the script will use configured credentials.
-
-**Note:** Publishing requires valid credentials or OIDC token. For local instances, ensure your PyPI server is running and accessible.
-
-## CircleCI Workflow
-
-The workflow automatically publishes based on branch:
-
-- **`main` branch** → Publishes to [PyPI](https://pypi.org) (production)
-- **Other branches** → Publishes to [TestPyPI](https://test.pypi.org) (staging)
-
-### Required CircleCI Contexts
-
-Create two contexts in your CircleCI organization:
-
-1. **`pypi-production`**
-   - Variable: `PYPI_API_TOKEN` (your PyPI API token)
-
-2. **`pypi-staging`**
-   - Variable: `PYPI_API_TOKEN` (your TestPyPI API token)
-
-### Version Strategy
-
-Versions are automatically generated to ensure uniqueness across builds:
-
-- **Staging:** `0.0.0.dev{CIRCLE_BUILD_NUM}`
-- **Production:** `0.0.0.post{CIRCLE_BUILD_NUM}`
-
-This prevents "file already exists" errors on repeated builds.
-
-### Installing from TestPyPI
-
-To test the staged build:
-
-```bash
-pip install \
-  --index-url https://test.pypi.org/simple/ \
-  --extra-index-url https://pypi.org/simple/ \
-  circleci-sign-publish-example
-```
+The trusted publisher is configured on TestPyPI under the project's *Publishing* settings and is bound to the `trusted-publishing-guard` CircleCI context, which has an expression restriction limiting it to `main`. A second workflow on non-main branches is included to demonstrate that the lockdown rejects publishes from other branches.

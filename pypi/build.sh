@@ -1,50 +1,26 @@
 #!/bin/bash
-# Build Python package distributions using uv build
-# 
-# Usage:
-#   export PYPI_ENV=staging  # or production
-#   ./build.sh
+# Set a dynamic package version and build the wheel and sdist.
 #
-# Environment variables:
-#   PYPI_ENV    - either "staging" or "production" (required)
-#   CIRCLE_BUILD_NUM - CircleCI build number (auto-set, defaults to 0 locally)
+# The version is MAJOR.MINOR from pyproject.toml with the patch set to the
+# CircleCI build number, so every publish gets a unique, increasing version
+# and repeated builds do not collide on the index.
 
-set -e
+set -euo pipefail
 
-# Validate PYPI_ENV
-if [ -z "$PYPI_ENV" ]; then
-  echo "Error: PYPI_ENV not set (must be 'staging' or 'production')" >&2
-  exit 1
-fi
-
-if [ "$PYPI_ENV" != "staging" ] && [ "$PYPI_ENV" != "production" ]; then
-  echo "Error: PYPI_ENV must be 'staging' or 'production', got '$PYPI_ENV'" >&2
-  exit 1
-fi
-
-# Determine version based on environment
+BASE_VERSION="$(grep -E '^version = ' pyproject.toml | head -1 | sed -E 's/version = "(.*)"/\1/')"
 BUILD_NUM="${CIRCLE_BUILD_NUM:-0}"
 
-case "$PYPI_ENV" in
-  staging)
-    VERSION="0.0.1.dev${BUILD_NUM}"
-    ;;
-  production)
-    VERSION="0.0.1.post${BUILD_NUM}"
-    ;;
-esac
+IFS='.' read -r MAJOR MINOR _ <<< "$BASE_VERSION"
+TARGET_VERSION="${MAJOR}.${MINOR}.${BUILD_NUM}"
 
-echo "Building package version: $VERSION"
+echo "Setting package version to: ${TARGET_VERSION}"
 
-# Update version in pyproject.toml (portable sed for macOS and Linux)
-sed -i.bak "s/version = \".*\"/version = \"$VERSION\"/" pyproject.toml && rm -f pyproject.toml.bak
-
-# Update version in __init__.py
+# Portable sed for macOS and Linux.
 INIT_FILE="src/circleci_sign_publish_example/__init__.py"
-sed -i.bak "s/__version__ = \".*\"/__version__ = \"$VERSION\"/" "$INIT_FILE" && rm -f "${INIT_FILE}.bak"
+sed -i.bak "s/^version = .*/version = \"${TARGET_VERSION}\"/" pyproject.toml && rm -f pyproject.toml.bak
+sed -i.bak "s/^__version__ = .*/__version__ = \"${TARGET_VERSION}\"/" "$INIT_FILE" && rm -f "${INIT_FILE}.bak"
 
-# Install uv if needed and build
-echo "Building distributions with uv..."
-uv build
+echo "Building distributions..."
+python -m build
 
 echo "Build complete. Distributions ready in dist/"

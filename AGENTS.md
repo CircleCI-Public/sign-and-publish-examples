@@ -15,7 +15,7 @@ Each example is self-contained in its own directory:
   - `image/` - Container image signing & verification
   - `validate-verification-info.sh` - Policy validation
   - `README.md` - Example-specific documentation
-- **`pypi/`** - PyPI publishing example (Python; in development)
+- **`pypi/`** - PyPI trusted publishing example (Python)
 - **`.circleci/config.yml`** - Shared CircleCI pipeline
 - **`_local/`** - Local development utilities
 
@@ -27,7 +27,10 @@ Each example is self-contained in its own directory:
 - Run workflows: Push to trigger `.circleci/config.yml` (main=production, others=staging)
 
 **PyPI example:**
-- Add commands as example develops
+- Build: `cd pypi && ./build.sh` (sets dynamic version, builds wheel + sdist)
+- Test: `cd pypi && PYTHONPATH=src python -m unittest discover -s tests`
+- Publish (CI): `twine upload --repository testpypi dist/*` (OIDC trusted publishing, no token)
+- Run workflow: push to trigger `.circleci/pypi-publish.yml`
 
 ## Code Style & Conventions
 **Cosign (Bash):**

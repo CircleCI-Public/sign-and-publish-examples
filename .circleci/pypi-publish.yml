@@ -1,0 +1,56 @@
+version: 2.1
+
+jobs:
+  pypi_publish_example:
+    docker:
+      - image: cimg/python:3.13
+    # This will also work with self-hosted runners!
+    working_directory: ~/project/pypi
+    steps:
+      - checkout:
+          path: ~/project
+      - run:
+          name: Install build and publish tools
+          # twine 6.1.0+ has built-in trusted publishing support. It relies on
+          # the `id` library to mint the OIDC token; id 1.6.0+ knows how to do
+          # this on CircleCI (via `circleci run oidc get --root-issuer`).
+          command: python -m pip install --upgrade build twine "id>=1.6.0"
+      - run:
+          name: Run tests
+          command: PYTHONPATH=src python -m unittest discover -s tests
+      - run:
+          name: Set dynamic version and build distributions
+          command: ./build.sh
+      - run:
+          name: Publish to TestPyPI
+          # No token needed: twine detects the CircleCI OIDC credentials and
+          # exchanges them for a short-lived TestPyPI API token automatically.
+          command: twine upload --repository testpypi dist/*
+
+workflows:
+  pypi_publish:
+    jobs:
+      - pypi_publish_example:
+          context:
+            - trusted-publishing-guard
+          name: PyPI Publish
+          filters:
+            branches:
+              only:
+                - main
+
+  # This workflow is expected to FAIL. The trusted-publishing-guard context
+  # has an expression restriction that only allows it to run on the main
+  # branch, so any job on a non-main branch that tries to use the context
+  # will be rejected with an Unauthorized status. That is the demo: the
+  # context lockdown stops a stray branch from publishing.
+  pypi_publish_not_main:
+    jobs:
+      - pypi_publish_example:
+          context:
+            - trusted-publishing-guard
+          name: PyPI Publish Not main
+          filters:
+            branches:
+              ignore:
+                - main

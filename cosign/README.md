@@ -144,7 +144,7 @@ After signing, the pipeline generates a verification info JSON file that contain
     "source_repository_uri": "https://github.com/your-org/your-repo",
     "source_repository_ref": "refs/heads/main",
     "build_signer_uri": "https://circleci.com/api/v2/projects/.../pipeline-definitions/...",
-    "runner_environment": "circleci-hosted"
+    "runner_environment": ""
   },
   "verify_command": "cosign verify-blob ..."
 }
@@ -173,7 +173,7 @@ CircleCI OIDC claims are embedded as X.509 certificate extensions by Fulcio. Con
 | Source Repository URI | 1.3.6.1.4.1.57264.1.12 | Repository the build was based on | `https://github.com/your-org/your-repo` |
 | Source Repository Ref | 1.3.6.1.4.1.57264.1.14 | Branch or tag                     | `refs/heads/main`                       |
 | Build Signer URI      | 1.3.6.1.4.1.57264.1.9  | Pipeline definition that signed   | CircleCI pipeline definition URL        |
-| Runner Environment    | 1.3.6.1.4.1.57264.1.11 | Where build ran                   | `circleci-hosted` or `ssh-rerun`        |
+| Runner Environment    | 1.3.6.1.4.1.57264.1.11 | `ssh-rerun` if the build was an SSH rerun, otherwise empty | empty, or `ssh-rerun`  |
 
 ### Validating Provenance (e.g., "Was this built from main?")
 
